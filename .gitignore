@@ -1,0 +1,113 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[codz]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py.cover
+.hypothesis/
+.pytest_cache/
+cover/
+
+# Logs
+*.log
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# Environments
+.env
+.envrc
+.venv
+env/
+venv/
+
+ENV/
+env.bak/
+venv.bak/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Ruff
+.ruff_cache/
+
+# PyCharm / VS Code (descomente se quiser versionar)
+# .idea/
+# .vscode/
+
+# poetry — commitamos o lock para reprodutibilidade
+# poetry.lock
+
+# ─── Project-specific ──────────────────────────────────────────────────────
+
+# Dados — o CSV Home Credit é grande e pode conter PII: nunca versionar.
+data/raw/*
+data/processed/*
+data/external/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+!data/external/.gitkeep
+
+# Modelos e artefatos treinados
+models/artifacts/*
+!models/artifacts/.gitkeep
+
+# Métricas geradas em runtime
+metrics/*.json
+!metrics/.gitkeep
+
+# MLflow — container (docker compose up mlflow)
+mlflow-data/
+
+# Grafana (estado runtime do container)
+monitoring/grafana/data/
+
+# Anotações locais de progresso dos agentes (não são documentação da entrega)
+docs/todo.md
+docs/todo-*.md
+docs/progresso*.md
+docs/progress*.md
+docs/status*.md
+docs/notes*.md
+docs/superpowers/plans/
+.claude/settings.local.json
+routine.md
