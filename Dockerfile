@@ -34,3 +34,12 @@ HEALTHCHECK --interval=15s --timeout=5s --retries=5 --start-period=20s \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"
 
 CMD ["uvicorn", "src.serving.api:app", "--host", "0.0.0.0", "--port", "8000"]
+
+
+# Stage 3: train — imagem de treino = api + cliente MLflow para tracking.
+# Mantém a imagem de serviço enxuta (sem mlflow) e evita mexer no poetry.lock.
+FROM api AS train
+
+RUN pip install --no-cache-dir "mlflow>=2.16,<3"
+
+CMD ["python", "-m", "src.models.train"]
