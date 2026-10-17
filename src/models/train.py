@@ -83,6 +83,51 @@ def _safe_ratio(
     return ratio.replace([np.inf, -np.inf], np.nan)
 
 
+def _clean_anomalies(frame: pd.DataFrame) -> pd.DataFrame:
+    """Converte a sentinela 365243 de DAYS_EMPLOYED ("sem emprego") em NaN."""
+    if "DAYS_EMPLOYED" in frame.columns:
+        frame["DAYS_EMPLOYED"] = frame["DAYS_EMPLOYED"].replace(
+            DAYS_EMPLOYED_ANOMALY, np.nan
+        )
+    return frame
+
+
+def _add_ratio_features(frame: pd.DataFrame) -> pd.DataFrame:
+    """Razões de endividamento e capacidade de pagamento."""
+    income = _safe_column(frame, "AMT_INCOME_TOTAL")
+    credit = _safe_column(frame, "AMT_CREDIT")
+    annuity = _safe_column(frame, "AMT_ANNUITY")
+    goods = _safe_column(frame, "AMT_GOODS_PRICE")
+    family = _safe_column(frame, "CNT_FAM_MEMBERS")
+    frame["CREDIT_INCOME_PERCENT"] = _safe_ratio(credit, income)
+    frame["ANNUITY_INCOME_PERCENT"] = _safe_ratio(annuity, income)
+    frame["CREDIT_TERM"] = _safe_ratio(annuity, credit)
+    frame["CREDIT_GOODS_PERCENT"] = _safe_ratio(credit, goods)
+    frame["INCOME_PER_PERSON"] = _safe_ratio(income, family)
+    return frame
+
+
+def _add_tenure_features(frame: pd.DataFrame) -> pd.DataFrame:
+    """Proporção da vida empregada e idade (DAYS_* são dias negativos)."""
+    days_birth = _safe_column(frame, "DAYS_BIRTH")
+    days_employed = _safe_column(frame, "DAYS_EMPLOYED")
+    frame["DAYS_EMPLOYED_PERCENT"] = _safe_ratio(days_employed, days_birth)
+    frame["AGE_YEARS"] = -days_birth / 365.0
+    return frame
+
+
+def _add_external_source_features(frame: pd.DataFrame) -> pd.DataFrame:
+    """Agrega os escores externos EXT_SOURCE_* (média/desvio/produto)."""
+    available = [name for name in EXT_SOURCE_COLUMNS if name in frame.columns]
+    if not available:
+        return frame
+    sources = frame[available].apply(pd.to_numeric, errors="coerce")
+    frame["EXT_SOURCES_MEAN"] = sources.mean(axis=1)
+    frame["EXT_SOURCES_STD"] = sources.std(axis=1)
+    frame["EXT_SOURCES_PROD"] = sources.prod(axis=1, min_count=len(available))
+    return frame
+
+
 def engineer_features(frame: pd.DataFrame) -> pd.DataFrame:
     """Adiciona as features de domínio clássicas do Home Credit.
 
@@ -90,41 +135,10 @@ def engineer_features(frame: pd.DataFrame) -> pd.DataFrame:
     (imputadas no pré-processamento) em vez de quebrar a inferência.
     """
     result = frame.copy()
-
-    # DAYS_EMPLOYED usa 365243 como sentinela de "sem emprego"; vira NaN.
-    if "DAYS_EMPLOYED" in result.columns:
-        result["DAYS_EMPLOYED"] = result["DAYS_EMPLOYED"].replace(
-            DAYS_EMPLOYED_ANOMALY, np.nan
-        )
-
-    income = _safe_column(result, "AMT_INCOME_TOTAL")
-    credit = _safe_column(result, "AMT_CREDIT")
-    annuity = _safe_column(result, "AMT_ANNUITY")
-    goods = _safe_column(result, "AMT_GOODS_PRICE")
-    days_birth = _safe_column(result, "DAYS_BIRTH")
-    days_employed = _safe_column(result, "DAYS_EMPLOYED")
-    family = _safe_column(result, "CNT_FAM_MEMBERS")
-
-    # Razões de endividamento e capacidade de pagamento.
-    result["CREDIT_INCOME_PERCENT"] = _safe_ratio(credit, income)
-    result["ANNUITY_INCOME_PERCENT"] = _safe_ratio(annuity, income)
-    result["CREDIT_TERM"] = _safe_ratio(annuity, credit)
-    result["CREDIT_GOODS_PERCENT"] = _safe_ratio(credit, goods)
-    result["INCOME_PER_PERSON"] = _safe_ratio(income, family)
-
-    # Proporção da vida empregada e idade (DAYS_* são dias negativos).
-    result["DAYS_EMPLOYED_PERCENT"] = _safe_ratio(days_employed, days_birth)
-    result["AGE_YEARS"] = -days_birth / 365.0
-
-    # Agregações dos escores externos (média/desvio/produto).
-    available = [name for name in EXT_SOURCE_COLUMNS if name in result.columns]
-    if available:
-        sources = result[available].apply(pd.to_numeric, errors="coerce")
-        result["EXT_SOURCES_MEAN"] = sources.mean(axis=1)
-        result["EXT_SOURCES_STD"] = sources.std(axis=1)
-        result["EXT_SOURCES_PROD"] = sources.prod(axis=1, min_count=len(available))
-
-    return result
+    result = _clean_anomalies(result)
+    result = _add_ratio_features(result)
+    result = _add_tenure_features(result)
+    return _add_external_source_features(result)
 
 
 def split_features_target(
