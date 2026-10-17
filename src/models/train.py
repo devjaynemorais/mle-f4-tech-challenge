@@ -68,7 +68,7 @@ EXT_SOURCE_COLUMNS = ["EXT_SOURCE_1", "EXT_SOURCE_2", "EXT_SOURCE_3"]
 DAYS_EMPLOYED_ANOMALY = 365243
 
 
-def _safe_column(frame: pd.DataFrame, name: str) -> "pd.Series[float]":
+def _safe_column(frame: pd.DataFrame, name: str) -> pd.Series[float]:
     """Coluna numérica pedida, ou série de NaN quando ela não existe."""
     if name in frame.columns:
         return pd.to_numeric(frame[name], errors="coerce")
@@ -76,8 +76,8 @@ def _safe_column(frame: pd.DataFrame, name: str) -> "pd.Series[float]":
 
 
 def _safe_ratio(
-    numerator: "pd.Series[float]", denominator: "pd.Series[float]"
-) -> "pd.Series[float]":
+    numerator: pd.Series[float], denominator: pd.Series[float]
+) -> pd.Series[float]:
     """Razão protegida: divisão por zero ou ausência resulta em NaN."""
     ratio = numerator / denominator.replace(0, np.nan)
     return ratio.replace([np.inf, -np.inf], np.nan)
@@ -129,7 +129,7 @@ def engineer_features(frame: pd.DataFrame) -> pd.DataFrame:
 
 def split_features_target(
     frame: pd.DataFrame, config: ExperimentConfig
-) -> tuple[pd.DataFrame, "pd.Series[int]"]:
+) -> tuple[pd.DataFrame, pd.Series[int]]:
     """Separa as features (sem identificador e alvo) do alvo binário."""
     data = config.data
     target = frame[data.target_column].astype(int)
@@ -182,7 +182,7 @@ def build_pipeline(features: pd.DataFrame, estimator: object) -> Pipeline:
 
 
 def candidate_estimators(
-    target: "pd.Series[int]", config: ExperimentConfig
+    target: pd.Series[int], config: ExperimentConfig
 ) -> dict[str, object]:
     """Cria os classificadores candidatos ponderados pelo desbalanceamento."""
     seed = config.model.random_state
@@ -207,7 +207,7 @@ def candidate_estimators(
 
 
 def make_splits(
-    features: pd.DataFrame, target: "pd.Series[int]", config: ExperimentConfig
+    features: pd.DataFrame, target: pd.Series[int], config: ExperimentConfig
 ) -> Splits:
     """Divide em treino/validação de forma estratificada pelo alvo."""
     return train_test_split(
