@@ -1,10 +1,23 @@
-.PHONY: env install lint format test test-cov dataset api compose-build compose-up compose-down
+.PHONY: first rebuild env install lint format test test-cov dataset train api compose-build compose-up compose-down
 
 # `poetry` nem sempre está no PATH (ex.: Windows Store Python instala o script
 # de entrada numa pasta de usuário que não entra no PATH automaticamente).
 # `python -m poetry` não depende dessa resolução — só precisa que o pacote
 # `poetry` esteja instalado no interpretador `python` corrente.
 POETRY := python -m poetry
+
+# ─── Primeiro uso (Docker) ──────────────────────────────────────────────────────
+
+# Bootstrap da primeira execução via Docker, de ponta a ponta:
+#   1. cria o .env (se faltar);
+#   2. builda e treina o modelo (gera models/artifacts/ + metrics/);
+#   3. sobe a stack em background: api + prometheus + grafana + mlflow.
+# Pré-requisito: data/raw/application_train.csv no host.
+# Ao fim: API em :8000, MLflow :5000, Prometheus :9090, Grafana :3000.
+first:
+	python -c "import os, shutil; shutil.copyfile('.env.example', '.env') if not os.path.exists('.env') else print('.env ja existe')"
+	docker compose run --rm --build train
+	docker compose up -d --build
 
 # ─── Ambiente ─────────────────────────────────────────────────────────────────
 
@@ -40,6 +53,10 @@ test-cov:
 dataset:
 	$(POETRY) run python -m src.data.loader
 
+# Treino do modelo base (Etapa 1): gera models/artifacts/credit_model.joblib.
+train:
+	$(POETRY) run python -m src.models.train
+
 # ─── Serviço local ──────────────────────────────────────────────────────────────
 
 API_PORT ?= 8000
@@ -51,6 +68,11 @@ api:
 
 compose-build:
 	docker compose build
+
+# Rebuild sem cache de todas as imagens, incluindo o serviço `train` (profile).
+# Use após mudar Dockerfile, dependências ou o código do treino.
+rebuild:
+	docker compose --profile train build --no-cache
 
 compose-up:
 	docker compose up
