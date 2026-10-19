@@ -4,7 +4,13 @@ from __future__ import annotations
 
 import time
 
-from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_latest
+from prometheus_client import (
+    CONTENT_TYPE_LATEST,
+    Counter,
+    Gauge,
+    Histogram,
+    generate_latest,
+)
 from starlette.requests import Request
 from starlette.responses import Response
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
@@ -23,6 +29,24 @@ PREDICTION_COUNT = Counter(
     "credit_predictions_total",
     "Predições de risco de crédito retornadas pela API",
     ["predicted_label"],
+)
+PREDICTION_PROBABILITY = Histogram(
+    "credit_default_probability",
+    "Distribuição da probabilidade de default prevista (monitora drift de score)",
+    buckets=(0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0),
+)
+PREDICTION_LATENCY = Histogram(
+    "credit_prediction_duration_seconds",
+    "Duração da inferência do modelo em segundos (sem overhead HTTP)",
+)
+PREDICTION_ERRORS = Counter(
+    "credit_prediction_errors_total",
+    "Falhas de inferência do modelo de crédito",
+    ["error_type"],
+)
+MODEL_LOADED = Gauge(
+    "credit_model_loaded",
+    "1 quando o modelo está carregado; 0 em modo degradado",
 )
 
 
