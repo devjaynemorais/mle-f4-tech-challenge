@@ -8,7 +8,7 @@ from contextlib import AbstractAsyncContextManager, asynccontextmanager
 
 from fastapi import FastAPI
 
-from src.serving.metrics import PrometheusMiddleware
+from src.serving.metrics import MODEL_LOADED, PrometheusMiddleware
 from src.serving.model_loader import CreditPredictor, load_predictor
 from src.serving.routes import router
 from src.utils.config_loader import load_config
@@ -25,8 +25,10 @@ def _lifespan(
     @asynccontextmanager
     async def lifespan(application: FastAPI) -> AsyncIterator[None]:
         application.state.predictor = None
+        MODEL_LOADED.set(0)
         try:
             application.state.predictor = predictor_loader()
+            MODEL_LOADED.set(1)
             logger.info(
                 "Modelo de crédito carregado (backend=%s)",
                 application.state.predictor.backend,
@@ -35,6 +37,7 @@ def _lifespan(
             logger.exception("Falha ao carregar o modelo; API em modo degradado")
         yield
         application.state.predictor = None
+        MODEL_LOADED.set(0)
 
     return lifespan
 
