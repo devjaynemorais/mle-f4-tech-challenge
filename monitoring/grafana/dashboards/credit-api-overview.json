@@ -2,7 +2,7 @@
   "title": "Credit Scoring API — Overview",
   "uid": "credit-api-overview",
   "schemaVersion": 39,
-  "version": 2,
+  "version": 3,
   "editable": true,
   "timezone": "browser",
   "time": {
@@ -110,6 +110,143 @@
           "refId": "A",
           "expr": "sum(credit_predictions_total) by (predicted_label)",
           "legendFormat": "{{predicted_label}}"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Modelo Carregado (1=ok, 0=degradado)",
+      "type": "stat",
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 12,
+        "y": 14
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": { "text": "DEGRADADO", "color": "red" },
+                "1": { "text": "OK", "color": "green" }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(credit_model_loaded)",
+          "legendFormat": "model_loaded"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Score Médio Previsto (prob. de default)",
+      "type": "stat",
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 18,
+        "y": 14
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 3,
+          "min": 0,
+          "max": 1
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(credit_default_probability_sum[5m])) / sum(rate(credit_default_probability_count[5m]))",
+          "legendFormat": "score médio"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Latência de Inferência p50/p95 (segundos)",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 20
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum(rate(credit_prediction_duration_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p95"
+        },
+        {
+          "refId": "B",
+          "expr": "histogram_quantile(0.50, sum(rate(credit_prediction_duration_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p50"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "title": "Distribuição do Score Previsto p50/p90",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 20
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "min": 0,
+          "max": 1
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.90, sum(rate(credit_default_probability_bucket[5m])) by (le))",
+          "legendFormat": "p90"
+        },
+        {
+          "refId": "B",
+          "expr": "histogram_quantile(0.50, sum(rate(credit_default_probability_bucket[5m])) by (le))",
+          "legendFormat": "p50"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "title": "Erros de Inferência por Tipo (/s)",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 28
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(credit_prediction_errors_total[5m])) by (error_type)",
+          "legendFormat": "{{error_type}}"
         }
       ]
     }
