@@ -22,6 +22,28 @@ services:
       retries: 5
       start_period: 20s
 
+  # Treino do modelo (Etapa 1). Não sobe com `up`; rode sob demanda:
+  #   docker compose run --rm train
+  # Requer data/raw/application_train.csv no host; grava o artefato em models/
+  # e as métricas em metrics/ (ambos montados com escrita).
+  train:
+    build:
+      context: .
+      target: train
+    image: mle-f4-tech-challenge-train
+    profiles: ["train"]
+    command: ["python", "-m", "src.models.train"]
+    environment:
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+    volumes:
+      - ./data:/app/data:ro
+      - ./models:/app/models
+      - ./metrics:/app/metrics
+    depends_on:
+      - mlflow
+    networks:
+      - ml-network
+
   mlflow:
     image: ghcr.io/mlflow/mlflow:v2.16.0
     entrypoint: ["mlflow"]

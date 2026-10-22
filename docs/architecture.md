@@ -37,6 +37,12 @@ src/drift/detect.py ──► Evidently (PSI/KS) ──► reports/*.html
 - **Métricas com nomes estáveis.** `http_requests_total`,
   `http_request_duration_seconds` e `credit_predictions_total{predicted_label}`
   alimentam o dashboard versionado em `monitoring/grafana/dashboards/`.
+- **Métricas de modelo.** Além das de HTTP, a API expõe:
+  `credit_default_probability` (histograma da probabilidade prevista, para
+  acompanhar drift de score), `credit_prediction_duration_seconds` (latência da
+  inferência, sem overhead HTTP), `credit_prediction_errors_total{error_type}`
+  (falhas de inferência) e `credit_model_loaded` (gauge 0/1 do estado do
+  modelo). Todas em `src/serving/metrics.py` e coletadas pelo mesmo scrape.
 
 ## Pendências desta casca
 

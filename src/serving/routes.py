@@ -3,13 +3,20 @@
 from __future__ import annotations
 
 import logging
+import time
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import Response
 
 from src.serving.dependencies import get_predictor
-from src.serving.metrics import PREDICTION_COUNT, metrics_response
+from src.serving.metrics import (
+    PREDICTION_COUNT,
+    PREDICTION_ERRORS,
+    PREDICTION_LATENCY,
+    PREDICTION_PROBABILITY,
+    metrics_response,
+)
 from src.serving.model_loader import CreditPredictor
 from src.serving.schemas import (
     CreditRequest,
@@ -45,11 +52,15 @@ def predict(
     predictor: Annotated[CreditPredictor, Depends(get_predictor)],
 ) -> dict[str, object]:
     """Calcula o risco de default de um cliente sem registrar seus dados."""
+    started_at = time.perf_counter()
     try:
         probability, label = predictor.predict(request.features)
     except Exception as error:  # noqa: BLE001 - mapeia falhas do backend no contrato
+        PREDICTION_ERRORS.labels(error_type=type(error).__name__).inc()
         logger.error("Falha inesperada na inferência (%s)", type(error).__name__)
         raise HTTPException(status_code=500, detail="Model inference failed") from None
+    PREDICTION_LATENCY.observe(time.perf_counter() - started_at)
+    PREDICTION_PROBABILITY.observe(probability)
     PREDICTION_COUNT.labels(predicted_label=label).inc()
     return {
         "default_probability": probability,

@@ -32,9 +32,12 @@ class DataConfig(BaseModel):
 
 
 class ModelConfig(BaseModel):
-    """Parâmetros de decisão do modelo em produção."""
+    """Parâmetros de decisão e de treino do modelo de crédito."""
 
     prediction_threshold: float = Field(gt=0, lt=1)
+    test_size: float = Field(default=0.2, gt=0, lt=1)
+    sample_size: int | None = Field(default=None, gt=0)
+    random_state: int = 42
 
 
 class ArtifactConfig(BaseModel):
@@ -44,6 +47,13 @@ class ArtifactConfig(BaseModel):
     model_file: str
 
 
+class MlflowConfig(BaseModel):
+    """Destino do tracking de experimentos (sobrescrito por env)."""
+
+    tracking_uri: str = "http://localhost:5000"
+    experiment: str = "credit-scoring"
+
+
 class ExperimentConfig(BaseModel):
     """Configuração raiz tipada do projeto."""
 
@@ -51,6 +61,7 @@ class ExperimentConfig(BaseModel):
     data: DataConfig
     model: ModelConfig
     artifacts: ArtifactConfig
+    mlflow: MlflowConfig = MlflowConfig()
 
 
 @lru_cache(maxsize=8)

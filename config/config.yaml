@@ -18,7 +18,19 @@ model:
   # Probabilidade de default acima deste limiar vira predição "default".
   # Limiar de negócio: a ser revisado na Etapa 4 (impacto de falsos negativos).
   prediction_threshold: 0.5
+  # Fração do dataset de referência reservada para validação (ROC-AUC).
+  test_size: 0.2
+  # Amostra usada no treino durante o desenvolvimento (null = CSV completo).
+  sample_size: 50000
+  # Seed de reprodutibilidade do treino (split e modelos).
+  random_state: 42
 
 artifacts:
   model_path: models/artifacts
   model_file: credit_model.joblib
+
+mlflow:
+  # Servidor de tracking. Sobrescrito pela env MLFLOW_TRACKING_URI (o compose
+  # aponta o serviço de treino para http://mlflow:5000).
+  tracking_uri: http://localhost:5000
+  experiment: credit-scoring

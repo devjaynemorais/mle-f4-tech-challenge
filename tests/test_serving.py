@@ -114,6 +114,9 @@ def test_metrics_endpoint_exposes_preserved_prometheus_names() -> None:
     assert b"http_requests_total" in response.content
     assert b"http_request_duration_seconds" in response.content
     assert b"credit_predictions_total" in response.content
+    assert b"credit_default_probability" in response.content
+    assert b"credit_prediction_duration_seconds" in response.content
+    assert b"credit_model_loaded" in response.content
 
 
 def test_swagger_docs_are_available() -> None:
