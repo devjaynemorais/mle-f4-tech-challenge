@@ -24,7 +24,7 @@ Fonte: [MLET - Tech Challenge - Fase 4.pdf](MLET%20-%20Tech%20Challenge%20-%20Fa
 ## Etapas de desenvolvimento
 
 ### Etapa 1 — Validação de dados e contratos
-- [ ] Treinar classificador base (Scikit-Learn ou XGBoost) com dataset limpo de referência
+- [ ] Treinar classificador base com dataset limpo de referência (o treino atual usa o CSV bruto)
 - [ ] Criar contrato de dados (Pandera ou Great Expectations) com regras estritas
 - [ ] Forçar a passagem de um lote com erros e demonstrar o bloqueio da ingestão
 - [x] Base de leitura do CSV bruto com validação de colunas obrigatórias

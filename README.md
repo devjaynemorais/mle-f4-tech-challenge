@@ -10,9 +10,8 @@ camada de sustentação e confiabilidade ao redor de um modelo base: contratos
 de dados, simulação e detecção de drift, monitoramento e documentação de
 governança/LGPD.
 
-> **Status:** casca inicial. A infraestrutura (API, testes, lint, CI, Docker,
-> Prometheus/Grafana) está funcional. As quatro etapas do enunciado estão
-> mapeadas abaixo e serão implementadas uma a uma.
+> **Status:** infraestrutura e treino base implementados. Contratos de dados,
+> drift e governança ainda estão pendentes; as etapas constam abaixo.
 
 ## Dataset
 
@@ -35,13 +34,15 @@ e coloque o arquivo em `data/raw/application_train.csv`.
 make install          # Poetry + dependências de desenvolvimento
 cp .env.example .env
 make dataset          # resumo do CSV bruto (valida colunas e taxa de default)
+make train            # treina e grava o pipeline servido pela API
 make lint
 make test
 make api              # http://localhost:8000/docs
 ```
 
 Sem modelo treinado, `/health` responde `degraded` e `/predict` responde HTTP 503.
-Isso é o comportamento esperado até a Etapa 1 gerar `models/artifacts/credit_model.joblib`.
+Execute `make train` para gerar `models/artifacts/credit_model.joblib` após
+disponibilizar o CSV bruto.
 
 Com Docker (API + Prometheus + Grafana + MLflow):
 
@@ -74,7 +75,7 @@ O contrato exato de entrada será definido pelo schema de dados da Etapa 1.
 
 | Etapa | Disciplina | Status | Onde fica |
 |-------|------------|--------|-----------|
-| 1. Validação de dados e contratos | Validação de Dados | Estrutura pronta | `src/data/` (`contracts.py` e `loader.py`), `src/models/train.py` |
+| 1. Validação de dados e contratos | Validação de Dados | Treino base pronto; contratos pendentes | `src/data/`, `src/models/` |
 | 2. Simulação e detecção de drift | Data Drift | Estrutura pronta | `src/drift/` |
 | 3. Observabilidade de pipelines e modelos | Monitoramento de Pipelines e Infraestrutura | Infra pronta; métricas de pipeline a implementar | `src/observability/`, `monitoring/`, `src/serving/metrics.py` |
 | 4. Governança (LGPD) e causalidade | Privacy by Design e by Default | Seção abaixo a preencher | este README |
@@ -86,10 +87,10 @@ arquitetura em [docs/architecture.md](docs/architecture.md).
 ### Separação entre referência e produção
 
 Boa prática obrigatória do enunciado: o **dataset de referência** (usado no
-treino) e o **dataset de produção/análise** (onde o drift acontece) são
+treino) e o **dataset de produção/análise** (onde o drift acontece) devem ser
 arquivos distintos, configurados em `config/config.yaml`
-(`reference_file` e `production_file`). O de produção será gerado pela
-simulação da Etapa 2 e nunca participa do treino.
+(`reference_file` e `production_file`). Esses arquivos ainda serão gerados.
+Atualmente, o treino lê o CSV bruto; o arquivo de produção não participa dele.
 
 ### Contratos de dados (Etapa 1)
 
@@ -170,7 +171,7 @@ config/config.yaml        configuração tipada do experimento
 data/raw/                 CSV Home Credit (fora do Git)
 data/processed/           referência e produção (Etapas 1 e 2)
 src/data/                 leitura do bruto e contratos Pandera (Etapa 1)
-src/models/               treino do modelo base (Etapa 1)
+src/models/               orquestração, features, avaliação e artefatos do treino
 src/drift/                simulação e detecção de drift (Etapa 2)
 src/observability/        logs e métricas do pipeline (Etapa 3)
 src/serving/              API FastAPI, schemas, métricas Prometheus
@@ -185,4 +186,6 @@ tests/                    testes de unidade, serving e arquitetura
 - `poetry: command not found`: use `python -m poetry` (já é o padrão do `Makefile`).
 - `FileNotFoundError` em `make dataset`: confira o caminho do CSV em `data/raw/`.
 - `/health` degradado: esperado sem modelo treinado; confira `MODEL_ARTIFACTS_PATH` no `.env`.
+- `Can't get attribute 'reindex_features' on __main__` ao carregar um artefato
+  anterior à modularização: execute `make train` para gerar um novo pipeline.
 - portas ocupadas: ajuste `API_PORT`, `PROMETHEUS_PORT`, `GRAFANA_PORT` ou `MLFLOW_PORT` no `.env`.

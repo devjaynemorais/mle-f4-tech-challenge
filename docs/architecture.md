@@ -6,9 +6,15 @@
 data/raw/application_train.csv  (Home Credit, fora do Git)
         │
         ▼
-src/data/loader.py ──► src/data/contracts.py      Etapa 1: contrato Pandera bloqueia lotes ruins
+src/data/loader.py ──► src/data/contracts.py      Etapa 1: contrato Pandera pendente
         │
-        ├──► src/models/train.py ──► models/artifacts/credit_model.joblib
+        ├──► src/models/train.py (orquestrador)
+        │       ├──► dataset.py ──► features.py ──► preprocessing.py
+        │       ├──► candidates.py ──► evaluation.py
+        │       └──► artifacts.py + tracking.py (MLflow opcional)
+        │                         │
+        │                         ▼
+        │               models/artifacts/credit_model.joblib
         │                                   │
         │                                   ▼
         │                         src/serving/ (FastAPI)  ──► /predict, /health, /metrics
@@ -16,6 +22,7 @@ src/data/loader.py ──► src/data/contracts.py      Etapa 1: contrato Pander
         ▼                                   ▼                     ▼
 data/processed/reference.csv     predições de produção    Prometheus ──► Grafana
 data/processed/production.csv   (Etapa 2)                 (Etapa 3: + logs do pipeline)
+     (pendentes)
         │
         ▼
 src/drift/detect.py ──► Evidently (PSI/KS) ──► reports/*.html
@@ -23,9 +30,15 @@ src/drift/detect.py ──► Evidently (PSI/KS) ──► reports/*.html
 
 ## Decisões
 
-- **Referência × produção separadas.** O treino só enxerga o arquivo de
-  referência. O drift é medido contra o arquivo de produção simulado, que nunca
-  entra no treino. Isso evita vazamento entre as duas visões.
+- **Referência × produção separadas.** O treino atual lê o CSV bruto por
+  `src/data/loader.py`. A geração do arquivo de referência validado e a
+  simulação do arquivo de produção ainda são pendências; o treino não lê o
+  arquivo de produção. Quando essa etapa for implementada, o treino deverá
+  consumir somente a referência validada.
+- **Treino modular.** `src/models/train.py` coordena o fluxo. `dataset.py`
+  prepara a amostra e o split; `features.py` e `preprocessing.py` compõem o
+  pipeline serializado; `candidates.py` e `evaluation.py` treinam e selecionam
+  o modelo; `artifacts.py` e `tracking.py` registram os resultados.
 - **Configuração tipada.** Parâmetros do experimento ficam em
   `config/config.yaml` e são validados com Pydantic. Variáveis de ambiente
   (`.env`) ficam restritas a runtime: caminhos, portas e senhas locais.
@@ -50,4 +63,5 @@ src/drift/detect.py ──► Evidently (PSI/KS) ──► reports/*.html
   restringi-lo ao contrato de dados.
 - Persistência de métricas de drift e de logs de pipeline (Etapa 3): definir se
   vão para o Prometheus, para o MLflow ou para um arquivo consumido pelo Grafana.
-- Escolha de MLflow ou dashboard próprio para rastreamento (Etapa 3).
+- MLflow registra o treino de forma opcional; falta definir o rastreamento das
+  execuções de contratos e drift da Etapa 3.

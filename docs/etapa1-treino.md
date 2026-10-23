@@ -1,8 +1,8 @@
 # Etapa 1 — Treino do modelo e tracking
 
-Este documento registra todas as alterações feitas na branch
-`feat/config-train-updates` e a justificativa de cada decisão. O objetivo da
-etapa é sair de uma casca (stub) para um treino reprodutível que gera o
+Este documento registra as decisões do treino base, iniciadas na branch
+`feat/config-train-updates`, e a justificativa de cada decisão. O objetivo da
+etapa foi sair de uma casca (stub) para um treino reprodutível que gera o
 artefato servido pela API, com feature engineering de domínio e rastreamento
 de experimentos no MLflow.
 
@@ -10,17 +10,26 @@ de experimentos no MLflow.
 
 | Arquivo | Natureza da mudança |
 |---|---|
-| `src/models/train.py` | Implementação completa do treino + feature engineering + logging MLflow |
+| `src/models/train.py` | Orquestração do treino e ponto de entrada |
+| `src/models/dataset.py` | Amostragem e split estratificado |
+| `src/models/features.py` | Engenharia de atributos do Home Credit |
+| `src/models/preprocessing.py` | Pipeline serializado de treino e inferência |
+| `src/models/candidates.py` | Estimadores candidatos e pesos de classe |
+| `src/models/evaluation.py` | Avaliação e seleção por ROC-AUC |
+| `src/models/artifacts.py` | Modelo e métricas locais |
+| `src/models/tracking.py` | Tracking opcional no MLflow |
 | `config/config.yaml` | Parâmetros de treino (`test_size`, `sample_size`, `random_state`) e seção `mlflow` |
 | `src/utils/config_loader.py` | Validação dos novos campos (`ModelConfig`) e nova `MlflowConfig` |
 | `Makefile` | Alvos `train`, `first`, `rebuild` |
 | `docker-compose.yml` | Serviço `train` (profile) com tracking apontado ao MLflow |
 | `Dockerfile` | Stage `train` (imagem de serviço + cliente MLflow) |
 
-## 1. Treino do modelo (`src/models/train.py`)
+## 1. Treino do modelo (`src/models/`)
 
-O módulo era um stub. Passou a treinar, selecionar e persistir o pipeline que a
-API serve.
+O módulo inicial era um stub. O fluxo agora treina, seleciona e persiste o
+pipeline que a API serve; `train.py` coordena as etapas implementadas nos
+módulos acima. O treino atual lê o CSV bruto. A ingestão da referência após
+validação por contrato de dados ainda será implementada.
 
 ### Candidatos e seleção
 
@@ -67,7 +76,7 @@ O artefato é um `sklearn.Pipeline` com quatro etapas, nesta ordem:
 - Métricas: `metrics/training_metrics.json` com o ROC-AUC de cada candidato e o
   modelo escolhido — rastro auditável fora de qualquer UI.
 
-## 2. Feature engineering de domínio (`engineer_features`)
+## 2. Feature engineering de domínio (`src/models/features.py`)
 
 São as features clássicas do Home Credit Default Risk. Todas usam divisão
 protegida (`_safe_ratio`: divisão por zero ou `inf` vira `NaN`) e acesso
@@ -128,7 +137,7 @@ validados por Pydantic (`ModelConfig`, nova `MlflowConfig`) — configuração
 inválida falha no load, não no meio do treino. `MlflowConfig` tem defaults, de
 modo que configs e testes antigos continuam válidos.
 
-## 4. Tracking com MLflow (`log_to_mlflow`)
+## 4. Tracking com MLflow (`src/models/tracking.py`)
 
 Ao final do treino são registrados: parâmetros (`sample_size`, `test_size`,
 `random_state`, modelo escolhido), as métricas `roc_auc_<candidato>` e
