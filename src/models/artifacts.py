@@ -29,7 +29,14 @@ def write_metrics(candidates: list[Candidate], best: Candidate) -> Path:
     path = METRICS_DIR / "training_metrics.json"
     payload = {
         "selected_model": best.name,
-        "roc_auc": {candidate.name: candidate.roc_auc for candidate in candidates},
+        "cv_roc_auc": {
+            candidate.name: {
+                "mean": candidate.roc_auc,
+                "std": candidate.roc_auc_std,
+                "folds": list(candidate.fold_scores),
+            }
+            for candidate in candidates
+        },
     }
     path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     return path

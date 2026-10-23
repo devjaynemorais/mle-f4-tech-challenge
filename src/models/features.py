@@ -7,6 +7,18 @@ import pandas as pd
 
 EXT_SOURCE_COLUMNS = ["EXT_SOURCE_1", "EXT_SOURCE_2", "EXT_SOURCE_3"]
 DAYS_EMPLOYED_ANOMALY = 365243
+DERIVED_FEATURE_COLUMNS = (
+    "CREDIT_INCOME_PERCENT",
+    "ANNUITY_INCOME_PERCENT",
+    "CREDIT_TERM",
+    "CREDIT_GOODS_PERCENT",
+    "INCOME_PER_PERSON",
+    "DAYS_EMPLOYED_PERCENT",
+    "AGE_YEARS",
+    "EXT_SOURCES_MEAN",
+    "EXT_SOURCES_STD",
+    "EXT_SOURCES_PROD",
+)
 
 
 def _safe_column(frame: pd.DataFrame, name: str) -> pd.Series[float]:

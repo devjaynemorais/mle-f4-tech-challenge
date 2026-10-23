@@ -8,35 +8,37 @@ data/raw/application_train.csv  (Home Credit, fora do Git)
         ▼
 src/data/loader.py ──► src/data/contracts.py      Etapa 1: contrato Pandera pendente
         │
-        ├──► src/models/train.py (orquestrador)
-        │       ├──► dataset.py ──► features.py ──► preprocessing.py
-        │       ├──► candidates.py ──► evaluation.py
-        │       └──► artifacts.py + tracking.py (MLflow opcional)
-        │                         │
-        │                         ▼
-        │               models/artifacts/credit_model.joblib
-        │                                   │
-        │                                   ▼
-        │                         src/serving/ (FastAPI)  ──► /predict, /health, /metrics
-        │                                   │                     │
-        ▼                                   ▼                     ▼
-data/processed/reference.csv     predições de produção    Prometheus ──► Grafana
-data/processed/production.csv   (Etapa 2)                 (Etapa 3: + logs do pipeline)
-     (pendentes)
-        │
         ▼
-src/drift/detect.py ──► Evidently (PSI/KS) ──► reports/*.html
+src/data/processed.py  (split estratificado 80/20)
+        ├──► data/processed/prod_estavel.csv ───────────────┐
+        └──► data/processed/ref_data.csv                    │
+                       │                                    │
+                       ▼                                    │
+             src/models/train.py                             │
+              ├── dataset.py                                 │
+              ├── features.py + preprocessing.py por fold    │
+              ├── candidates.py + evaluation.py (CV)         │
+              └── artifacts.py + tracking.py                 │
+                       │                                    │
+                       ▼                                    │
+             models/artifacts/credit_model.joblib            │
+                       │                                    │
+                       ▼                                    │
+             src/serving/ ──► /predict, /health, /metrics     │
+                       │                                    │
+                       ▼                                    ▼
+                Prometheus ──► Grafana        src/drift/detect.py (Etapa 2)
 ```
 
 ## Decisões
 
-- **Referência × produção separadas.** O treino atual lê o CSV bruto por
-  `src/data/loader.py`. A geração do arquivo de referência validado e a
-  simulação do arquivo de produção ainda são pendências; o treino não lê o
-  arquivo de produção. Quando essa etapa for implementada, o treino deverá
-  consumir somente a referência validada.
+- **Referência × produção separadas.** O treino lê o CSV bruto, divide 80/20
+  com estratificação pelo alvo e salva referência e produção estável simulada.
+  A escolha dos candidatos usa validação cruzada apenas na referência; o
+  arquivo de produção não entra no treino. O contrato Pandera segue pendente.
 - **Treino modular.** `src/models/train.py` coordena o fluxo. `dataset.py`
-  prepara a amostra e o split; `features.py` e `preprocessing.py` compõem o
+  remove ID, alvo e derivadas previamente salvas; `features.py` e
+  `preprocessing.py` compõem o
   pipeline serializado; `candidates.py` e `evaluation.py` treinam e selecionam
   o modelo; `artifacts.py` e `tracking.py` registram os resultados.
 - **Configuração tipada.** Parâmetros do experimento ficam em

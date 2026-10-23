@@ -35,8 +35,8 @@ class ModelConfig(BaseModel):
     """Parâmetros de decisão e de treino do modelo de crédito."""
 
     prediction_threshold: float = Field(gt=0, lt=1)
-    test_size: float = Field(default=0.2, gt=0, lt=1)
-    sample_size: int | None = Field(default=None, gt=0)
+    production_size: float = Field(default=0.2, gt=0, lt=1)
+    cv_folds: int = Field(default=5, ge=2)
     random_state: int = 42
 
 

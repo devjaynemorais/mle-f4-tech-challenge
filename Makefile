@@ -53,7 +53,7 @@ test-cov:
 dataset:
 	$(POETRY) run python -m src.data.loader
 
-# Treino do modelo base (Etapa 1): gera models/artifacts/credit_model.joblib.
+# Gera os dois CSVs processados, compara modelos por CV e salva o pipeline.
 train:
 	$(POETRY) run python -m src.models.train
 

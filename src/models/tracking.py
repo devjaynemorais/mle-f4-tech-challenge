@@ -26,15 +26,16 @@ def _record_run(
     """Envia parâmetros, métricas e artefato em uma run ativa."""
     mlflow.log_params(
         {
-            "sample_size": config.model.sample_size,
-            "test_size": config.model.test_size,
+            "production_size": config.model.production_size,
+            "cv_folds": config.model.cv_folds,
             "random_state": config.model.random_state,
             "selected_model": best.name,
         }
     )
     for candidate in candidates:
-        mlflow.log_metric(f"roc_auc_{candidate.name}", candidate.roc_auc)
-    mlflow.log_metric("roc_auc_best", best.roc_auc)
+        mlflow.log_metric(f"cv_roc_auc_mean_{candidate.name}", candidate.roc_auc)
+        mlflow.log_metric(f"cv_roc_auc_std_{candidate.name}", candidate.roc_auc_std)
+    mlflow.log_metric("cv_roc_auc_best", best.roc_auc)
     mlflow.set_tag("selected_model", best.name)
     mlflow.log_artifact(str(artifact_path), artifact_path="model")
 

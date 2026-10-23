@@ -34,15 +34,16 @@ e coloque o arquivo em `data/raw/application_train.csv`.
 make install          # Poetry + dependências de desenvolvimento
 cp .env.example .env
 make dataset          # resumo do CSV bruto (valida colunas e taxa de default)
-make train            # treina e grava o pipeline servido pela API
+make train            # gera os CSVs processados, treina e grava o pipeline
 make lint
 make test
 make api              # http://localhost:8000/docs
 ```
 
 Sem modelo treinado, `/health` responde `degraded` e `/predict` responde HTTP 503.
-Execute `make train` para gerar `models/artifacts/credit_model.joblib` após
-disponibilizar o CSV bruto.
+Execute `make train` após disponibilizar o CSV bruto. O comando gera
+`data/processed/ref_data.csv`, `data/processed/prod_estavel.csv` e
+`models/artifacts/credit_model.joblib`.
 
 Com Docker (API + Prometheus + Grafana + MLflow):
 
@@ -86,16 +87,23 @@ arquitetura em [docs/architecture.md](docs/architecture.md).
 
 ### Separação entre referência e produção
 
-Boa prática obrigatória do enunciado: o **dataset de referência** (usado no
-treino) e o **dataset de produção/análise** (onde o drift acontece) devem ser
-arquivos distintos, configurados em `config/config.yaml`
-(`reference_file` e `production_file`). Esses arquivos ainda serão gerados.
-Atualmente, o treino lê o CSV bruto; o arquivo de produção não participa dele.
+`make train` divide `application_train.csv` de forma estratificada: 80% formam
+`ref_data.csv` (referência com `TARGET`) e 20% formam `prod_estavel.csv`
+(produção estável simulada, sem `TARGET`). Ambos recebem limpeza e engenharia
+de atributos determinísticas e ficam fora do Git. Os candidatos são comparados
+por validação cruzada estratificada apenas nos 80%; o vencedor é ajustado
+novamente com toda a referência. Imputação, escala e codificação são ajustadas
+separadamente em cada fold. A base estável é reservada para comparação de drift
+e não representa dados reais de produção. `SK_ID_CURR` fica nos CSVs locais
+para conferir a separação das amostras, mas não entra no modelo nem deve entrar
+nas estatísticas de drift.
 
 ### Contratos de dados (Etapa 1)
 
 A regra é que lotes com erros sejam bloqueados antes de chegar ao modelo.
-Regras previstas (mínimo de três, exigidas pelo enunciado):
+O preparo do treino já rejeita `TARGET` fora de 0/1 ou ausente e IDs duplicados
+ou ausentes. Os contratos Pandera completos ainda estão pendentes. Regras
+previstas (mínimo de três, exigidas pelo enunciado):
 
 - `TARGET` binário e sem nulos;
 - identificador `SK_ID_CURR` sem duplicatas;
