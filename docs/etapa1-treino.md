@@ -76,8 +76,9 @@ O artefato é um `sklearn.Pipeline` com quatro etapas, nesta ordem:
 
 - Artefato: `models/artifacts/credit_model.joblib` (caminho vem do
   `config.yaml`).
-- Dados: `data/processed/ref_data.csv` (com `TARGET`) e
-  `data/processed/prod_estavel.csv` (sem `TARGET`), ambos fora do Git.
+- Dados: `data/processed/ref_data.csv` e `data/processed/prod_data.csv`, ambos
+  com `TARGET` real e fora do Git. O segundo é a produção-base usada depois
+  pela simulação da Etapa 2; não entra no ajuste ou seleção do modelo.
 - Métricas: `metrics/training_metrics.json` com média, desvio e resultados por
   fold do ROC-AUC de cada candidato, além do modelo escolhido.
 
@@ -94,7 +95,7 @@ protegido às colunas (`_safe_column`: coluna ausente vira série de `NaN`).
 | `CREDIT_INCOME_PERCENT` | `AMT_CREDIT / AMT_INCOME_TOTAL` | Quanto o crédito pesa sobre a renda — alavancagem |
 | `ANNUITY_INCOME_PERCENT` | `AMT_ANNUITY / AMT_INCOME_TOTAL` | Comprometimento da renda com a parcela |
 | `CREDIT_TERM` | `AMT_ANNUITY / AMT_CREDIT` | Prazo implícito do empréstimo |
-| `CREDIT_GOODS_PERCENT` | `AMT_CREDIT / AMT_GOODS_PRICE` | Crédito acima do valor do bem = risco |
+| `CREDIT_GOODS_PERCENT` | `AMT_CREDIT / AMT_GOODS_PRICE` | Crédito em relação ao preço do bem financiado, quando aplicável |
 | `INCOME_PER_PERSON` | `AMT_INCOME_TOTAL / CNT_FAM_MEMBERS` | Renda per capita do domicílio |
 
 - **Justificativa:** inadimplência é melhor explicada por *proporções* do que

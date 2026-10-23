@@ -10,8 +10,9 @@ camada de sustentação e confiabilidade ao redor de um modelo base: contratos
 de dados, simulação e detecção de drift, monitoramento e documentação de
 governança/LGPD.
 
-> **Status:** infraestrutura e treino base implementados. Contratos de dados,
-> drift e governança ainda estão pendentes; as etapas constam abaixo.
+> **Status:** infraestrutura, treino base e simulação controlada de drift
+> implementados. Contratos de dados completos, detecção estatística e governança
+> ainda estão pendentes; as etapas constam abaixo.
 
 ## Dataset
 
@@ -35,6 +36,7 @@ make install          # Poetry + dependências de desenvolvimento
 cp .env.example .env
 make dataset          # resumo do CSV bruto (valida colunas e taxa de default)
 make train            # gera os CSVs processados, treina e grava o pipeline
+make drift            # gera os períodos estável e driftado a partir de prod_data.csv
 make lint
 make test
 make api              # http://localhost:8000/docs
@@ -42,8 +44,11 @@ make api              # http://localhost:8000/docs
 
 Sem modelo treinado, `/health` responde `degraded` e `/predict` responde HTTP 503.
 Execute `make train` após disponibilizar o CSV bruto. O comando gera
-`data/processed/ref_data.csv`, `data/processed/prod_estavel.csv` e
+`data/processed/ref_data.csv`, `data/processed/prod_data.csv` e
 `models/artifacts/credit_model.joblib`.
+Depois, `make drift` gera `prod_periodo1_estavel.csv`,
+`prod_periodo2_drift.csv` e `data_drift_simulation_manifest.json` em
+`data/processed/`.
 
 Com Docker (API + Prometheus + Grafana + MLflow):
 
@@ -77,7 +82,7 @@ O contrato exato de entrada será definido pelo schema de dados da Etapa 1.
 | Etapa | Disciplina | Status | Onde fica |
 |-------|------------|--------|-----------|
 | 1. Validação de dados e contratos | Validação de Dados | Treino base pronto; contratos pendentes | `src/data/`, `src/models/` |
-| 2. Simulação e detecção de drift | Data Drift | Estrutura pronta | `src/drift/` |
+| 2. Simulação e detecção de drift | Data Drift | Simulação pronta; detecção pendente | `src/drift/` |
 | 3. Observabilidade de pipelines e modelos | Monitoramento de Pipelines e Infraestrutura | Infra pronta; métricas de pipeline a implementar | `src/observability/`, `monitoring/`, `src/serving/metrics.py` |
 | 4. Governança (LGPD) e causalidade | Privacy by Design e by Default | Seção abaixo a preencher | este README |
 
@@ -88,12 +93,12 @@ arquitetura em [docs/architecture.md](docs/architecture.md).
 ### Separação entre referência e produção
 
 `make train` divide `application_train.csv` de forma estratificada: 80% formam
-`ref_data.csv` (referência com `TARGET`) e 20% formam `prod_estavel.csv`
-(produção estável simulada, sem `TARGET`). Ambos recebem limpeza e engenharia
+`ref_data.csv` (referência com `TARGET`) e 20% formam `prod_data.csv`
+(produção-base simulada, com `TARGET` real do Home Credit). Ambos recebem limpeza e engenharia
 de atributos determinísticas e ficam fora do Git. Os candidatos são comparados
 por validação cruzada estratificada apenas nos 80%; o vencedor é ajustado
 novamente com toda a referência. Imputação, escala e codificação são ajustadas
-separadamente em cada fold. A base estável é reservada para comparação de drift
+separadamente em cada fold. A produção-base é reservada para comparação de drift
 e não representa dados reais de produção. `SK_ID_CURR` fica nos CSVs locais
 para conferir a separação das amostras, mas não entra no modelo nem deve entrar
 nas estatísticas de drift.
@@ -112,9 +117,38 @@ previstas (mínimo de três, exigidas pelo enunciado):
 
 ### Drift (Etapa 2)
 
-Métricas previstas: PSI e Kolmogorov-Smirnov por feature, com relatório HTML
-do Evidently AI em `reports/`. Limiares e variáveis alteradas serão
-documentados quando a simulação for implementada.
+`make drift` amostra `N` linhas de `prod_data.csv` e divide a amostra em dois
+períodos com tamanhos quase iguais. O primeiro preserva features e `TARGET`
+originais. No segundo, o módulo `src/drift/data_drift_simulation.py` desloca
+idade, crédito, preço do bem, anuidade e escores externos; depois recalcula as
+features derivadas. `CODE_GENDER` permanece como na origem. As saídas têm o
+mesmo esquema processado, antes da escala e codificação do modelo.
+
+Por padrão, a idade mediana driftada é 33,1 anos, crédito ×1,20, preço do bem
+×1,05, anuidade ×1,15 e escores externos ×0,85. O `TARGET` do segundo período
+é **sintético**: os `round(0,12 × n_drift)` maiores riscos recebem 1, segundo a
+média dos percentis de idade menor, `EXT_SOURCES_MEAN` menor e
+`CREDIT_GOODS_PERCENT` maior. Ausências contam como percentil neutro.
+`CODE_GENDER_M` é uma coluna gerada pelo codificador do modelo e a categoria
+`CODE_GENDER` não é alterada. No dicionário Home Credit, `AMT_GOODS_PRICE` é o
+preço do bem associado ao empréstimo de consumo, quando aplicável; não é o
+patrimônio disponível do cliente. A direção de risco atribuída aos escores
+externos é uma premissa da simulação. Isso
+simula uma mudança na relação entre features e alvo; métricas calculadas contra
+esse `TARGET` descrevem somente essa regra sintética, não desempenho real em
+produção. O manifesto registra a origem dos rótulos e os parâmetros.
+
+Use `make drift DRIFT_ARGS="--n 50000 --target-rate 0.12 --seed 42"` para
+ajustar o volume e a taxa desejada (entre 0,11 e 0,13). A CLI também aceita
+`--input`, `--output-dir`, `--median-age`, `--credit-factor`, `--goods-factor`,
+`--annuity-factor` e `--external-score-factor`. Sem `--n`, usa o tamanho de
+`prod_data.csv`; se `N` exceder a origem, amostra com reposição e gera IDs
+sintéticos únicos em uma faixa iniciada em 1 bilhão, separada dos IDs Home Credit.
+A taxa do período estável segue os rótulos originais e
+pode variar com a amostra.
+
+Métricas de detecção previstas: PSI e Kolmogorov-Smirnov por feature, com
+relatório HTML do Evidently AI em `reports/`. A detecção ainda será implementada.
 
 ## Governança e LGPD (Etapa 4)
 

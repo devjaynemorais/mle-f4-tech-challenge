@@ -47,11 +47,12 @@ def test_train_generates_two_datasets_and_fits_model_on_reference(
     winner = training.train(config)
 
     reference = pd.read_csv(tmp_path / "data/processed/ref_data.csv")
-    stable = pd.read_csv(tmp_path / "data/processed/prod_estavel.csv")
+    stable = pd.read_csv(tmp_path / "data/processed/prod_data.csv")
     model = joblib.load(tmp_path / "models/artifacts/credit_model.joblib")
     metrics = json.loads((tmp_path / "metrics/training_metrics.json").read_text())
     assert len(reference) == 32
     assert len(stable) == 8
+    assert stable["TARGET"].isin([0, 1]).all()
     assert winner.name == metrics["selected_model"]
     assert len(metrics["cv_roc_auc"][winner.name]["folds"]) == 2
     assert model.predict_proba(

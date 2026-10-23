@@ -1,4 +1,4 @@
-"""Gera a referência e a produção estável a partir do CSV bruto."""
+"""Gera a referência e a produção-base a partir do CSV bruto."""
 
 from __future__ import annotations
 
@@ -77,7 +77,7 @@ def _write_pair(
 def prepare_datasets(
     frame: pd.DataFrame, config: ExperimentConfig
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Separa, transforma e salva referência e produção estável."""
+    """Separa, transforma e salva referência e produção-base."""
     _validate_raw(frame, config)
     reference, stable = train_test_split(
         frame,
@@ -86,8 +86,7 @@ def prepare_datasets(
         random_state=config.model.random_state,
     )
     reference = engineer_features(reference).reset_index(drop=True)
-    stable = engineer_features(stable).drop(columns=config.data.target_column)
-    stable = stable.reset_index(drop=True)
+    stable = engineer_features(stable).reset_index(drop=True)
     directory = PROJECT_ROOT / config.data.processed_path
     _write_pair(
         reference,

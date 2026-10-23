@@ -7,7 +7,7 @@ Fonte: [MLET - Tech Challenge - Fase 4.pdf](MLET%20-%20Tech%20Challenge%20-%20Fa
 | Requisito | Status | Evidência |
 |-----------|--------|-----------|
 | Pipeline de validação de dados (data contracts) configurado | Pendente (Etapa 1) | `src/data/contracts.py` |
-| Scripts para simulação e detecção estatística de drift | Pendente (Etapa 2) | `src/drift/` |
+| Scripts para simulação e detecção estatística de drift | Parcial: simulação pronta; detecção pendente | `src/drift/data_drift_simulation.py`, `src/drift/detect.py` |
 | Dashboards ou relatórios HTML comprovando o monitoramento | Parcial: dashboard Grafana provisionado; relatório Evidently pendente | `monitoring/grafana/`, `reports/` |
 | Documentação consolidada de Governança no README.md | Pendente (Etapa 4) | `README.md`, seção "Governança e LGPD" |
 | Histórico de commits semântico e organizado | Em andamento | `git log` |
@@ -16,7 +16,7 @@ Fonte: [MLET - Tech Challenge - Fase 4.pdf](MLET%20-%20Tech%20Challenge%20-%20Fa
 
 | Prática | Status |
 |---------|--------|
-| Separação entre dataset de referência (treino) e de produção (drift) | Configurada em `config/config.yaml`; arquivos a gerar nas Etapas 1 e 2 |
+| Separação entre dataset de referência (treino) e de produção (drift) | Implementada em `make train` e `make drift`; arquivos locais fora do Git |
 | Pelo menos 3 regras rígidas de qualidade de dados | Pendente (Etapa 1) |
 | Relatório estatístico da mudança de distribuição (PSI ou KS) | Pendente (Etapa 2) |
 | Documentação de compliance com plano de privacidade (LGPD) | Pendente (Etapa 4) |
@@ -30,7 +30,7 @@ Fonte: [MLET - Tech Challenge - Fase 4.pdf](MLET%20-%20Tech%20Challenge%20-%20Fa
 - [x] Base de leitura do CSV bruto com validação de colunas obrigatórias
 
 ### Etapa 2 — Simulação e detecção de drift
-- [ ] Criar dataset de produção com alteração intencional de ao menos duas variáveis
+- [x] Criar dataset de produção com alteração intencional de ao menos duas variáveis
 - [ ] Gerar predições para o dataset de produção
 - [ ] Usar Evidently AI para comparar referência e produção
 - [ ] Identificar, com PSI/KS, quais features sofreram drift

@@ -10,7 +10,7 @@ src/data/loader.py ──► src/data/contracts.py      Etapa 1: contrato Pander
         │
         ▼
 src/data/processed.py  (split estratificado 80/20)
-        ├──► data/processed/prod_estavel.csv ───────────────┐
+        ├──► data/processed/prod_data.csv (TARGET real) ────┐
         └──► data/processed/ref_data.csv                    │
                        │                                    │
                        ▼                                    │
@@ -27,7 +27,10 @@ src/data/processed.py  (split estratificado 80/20)
              src/serving/ ──► /predict, /health, /metrics     │
                        │                                    │
                        ▼                                    ▼
-                Prometheus ──► Grafana        src/drift/detect.py (Etapa 2)
+                Prometheus ──► Grafana        src/drift/data_drift_simulation.py
+                                            ├──► prod_periodo1_estavel.csv
+                                            ├──► prod_periodo2_drift.csv
+                                            └──► data_drift_simulation_manifest.json
 ```
 
 ## Decisões
@@ -35,7 +38,9 @@ src/data/processed.py  (split estratificado 80/20)
 - **Referência × produção separadas.** O treino lê o CSV bruto, divide 80/20
   com estratificação pelo alvo e salva referência e produção estável simulada.
   A escolha dos candidatos usa validação cruzada apenas na referência; o
-  arquivo de produção não entra no treino. O contrato Pandera segue pendente.
+  arquivo de produção não entra no treino. A simulação posterior divide
+  `prod_data.csv` em período estável com `TARGET` real e período driftado com
+  `TARGET` sintético condicionado às features. O contrato Pandera segue pendente.
 - **Treino modular.** `src/models/train.py` coordena o fluxo. `dataset.py`
   remove ID, alvo e derivadas previamente salvas; `features.py` e
   `preprocessing.py` compõem o

@@ -10,9 +10,9 @@ data:
   # 1 = cliente com dificuldade de pagamento (default); 0 = adimplente
   target_column: TARGET
   processed_path: data/processed
-  # Amostras estáveis geradas no treino; produção simulada com drift é posterior.
+  # Treino gera referência e produção-base com TARGET real; drift é posterior.
   reference_file: ref_data.csv
-  production_file: prod_estavel.csv
+  production_file: prod_data.csv
 
 model:
   # Probabilidade de default acima deste limiar vira predição "default".

@@ -28,7 +28,7 @@ def test_prepare_datasets_writes_disjoint_stratified_processed_csvs(
             "data": load_config().data.model_copy(
                 update={
                     "reference_file": "ref_data.csv",
-                    "production_file": "prod_estavel.csv",
+                    "production_file": "prod_data.csv",
                 }
             )
         }
@@ -36,12 +36,14 @@ def test_prepare_datasets_writes_disjoint_stratified_processed_csvs(
 
     reference, production = prepare_datasets(_raw_frame(), config)
     saved_reference = pd.read_csv(tmp_path / "data/processed/ref_data.csv")
-    saved_production = pd.read_csv(tmp_path / "data/processed/prod_estavel.csv")
+    saved_production = pd.read_csv(tmp_path / "data/processed/prod_data.csv")
 
     assert len(reference) == len(saved_reference) == 16
     assert len(production) == len(saved_production) == 4
     assert reference["TARGET"].value_counts().to_dict() == {0: 8, 1: 8}
-    assert "TARGET" not in production.columns
+    assert production["TARGET"].isin([0, 1]).all()
+    assert production["TARGET"].notna().all()
+    assert production["TARGET"].value_counts().to_dict() == {0: 2, 1: 2}
     assert set(reference.SK_ID_CURR).isdisjoint(set(production.SK_ID_CURR))
     assert "CREDIT_INCOME_PERCENT" in saved_reference.columns
     assert "CREDIT_INCOME_PERCENT" in saved_production.columns
@@ -68,7 +70,7 @@ def test_prepare_datasets_keeps_previous_pair_if_second_write_fails(
     directory = tmp_path / "data/processed"
     directory.mkdir(parents=True)
     reference_path = directory / "ref_data.csv"
-    stable_path = directory / "prod_estavel.csv"
+    stable_path = directory / "prod_data.csv"
     reference_path.write_text("old-reference", encoding="utf-8")
     stable_path.write_text("old-production", encoding="utf-8")
     original = pd.DataFrame.to_csv
@@ -97,7 +99,7 @@ def test_prepare_datasets_restores_previous_pair_if_publication_fails(
     directory = tmp_path / "data/processed"
     directory.mkdir(parents=True)
     reference_path = directory / "ref_data.csv"
-    stable_path = directory / "prod_estavel.csv"
+    stable_path = directory / "prod_data.csv"
     reference_path.write_text("old-reference", encoding="utf-8")
     stable_path.write_text("old-production", encoding="utf-8")
     original = type(reference_path).replace

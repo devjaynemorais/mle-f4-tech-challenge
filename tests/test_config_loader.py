@@ -13,7 +13,7 @@ def test_load_config_returns_typed_home_credit_config() -> None:
     assert config.project.name == "Credit Scoring Observability API"
     assert config.data.raw_file == "application_train.csv"
     assert config.data.reference_file == "ref_data.csv"
-    assert config.data.production_file == "prod_estavel.csv"
+    assert config.data.production_file == "prod_data.csv"
     assert config.model.production_size == 0.2
     assert config.model.cv_folds == 5
     assert config.model.prediction_threshold == 0.5
