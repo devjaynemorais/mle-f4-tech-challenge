@@ -156,6 +156,8 @@ def _manifest(
     rate: float,
     seed: int,
     p: DriftParameters,
+    stable_file: str = STABLE_FILE,
+    drifted_file: str = DRIFT_FILE,
 ) -> dict[str, object]:
     """Registra parâmetros e a origem de cada rótulo, sem dados individuais."""
     return {
@@ -166,13 +168,13 @@ def _manifest(
         "risk_features": ["AGE_YEARS", "EXT_SOURCES_MEAN", "CREDIT_GOODS_PERCENT"],
         "risk_rule": "média dos percentis; idade e score menores, razão maior",
         "period_1": {
-            "file": STABLE_FILE,
+            "file": stable_file,
             "rows": len(stable),
             "target_rate": float(stable.TARGET.mean()),
             "target_source": "original",
         },
         "period_2": {
-            "file": DRIFT_FILE,
+            "file": drifted_file,
             "rows": len(drift),
             "target_rate": float(drift.TARGET.mean()),
             "target_source": "synthetic",
@@ -186,6 +188,8 @@ def simulate_periods(
     target_rate: float,
     random_state: int,
     parameters: DriftParameters | None = None,
+    stable_file: str = STABLE_FILE,
+    drifted_file: str = DRIFT_FILE,
 ) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, object]]:
     """Divide a produção-base e simula drift de features e conceito no período 2."""
     p = parameters or DriftParameters()
@@ -201,7 +205,10 @@ def simulate_periods(
     stable = stable.reset_index(drop=True)
     drift = _shift_drivers(drift.reset_index(drop=True), p)
     drift = assign_synthetic_target(drift, target_rate, random_state)
-    return stable, drift, _manifest(stable, drift, n, target_rate, random_state, p)
+    manifest = _manifest(
+        stable, drift, n, target_rate, random_state, p, stable_file, drifted_file
+    )
+    return stable, drift, manifest
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -225,12 +232,15 @@ def _write_outputs(
     drift: pd.DataFrame,
     manifest: dict[str, object],
     output_dir: Path,
+    stable_file: str = STABLE_FILE,
+    drifted_file: str = DRIFT_FILE,
+    manifest_file: str = MANIFEST_FILE,
 ) -> None:
     """Publica os períodos e o manifesto no diretório solicitado."""
     output_dir.mkdir(parents=True, exist_ok=True)
-    stable.to_csv(output_dir / STABLE_FILE, index=False)
-    drift.to_csv(output_dir / DRIFT_FILE, index=False)
-    (output_dir / MANIFEST_FILE).write_text(
+    stable.to_csv(output_dir / stable_file, index=False)
+    drift.to_csv(output_dir / drifted_file, index=False)
+    (output_dir / manifest_file).write_text(
         json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
 
@@ -257,9 +267,19 @@ def main(argv: list[str] | None = None) -> None:
         args.target_rate,
         args.seed,
         parameters,
+        config.drift.stable_file,
+        config.drift.drifted_file,
     )
     manifest["input_file"] = str(input_path)
-    _write_outputs(stable, drift, manifest, args.output_dir or directory)
+    _write_outputs(
+        stable,
+        drift,
+        manifest,
+        args.output_dir or directory,
+        config.drift.stable_file,
+        config.drift.drifted_file,
+        config.drift.manifest_file,
+    )
     print(f"Períodos gerados: {len(stable)} estável, {len(drift)} driftado")
 
 

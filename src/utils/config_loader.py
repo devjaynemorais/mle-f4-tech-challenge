@@ -55,6 +55,19 @@ class MlflowConfig(BaseModel):
     experiment: str = "credit-scoring"
 
 
+class DriftConfig(BaseModel):
+    """Arquivos e limiares para simulação e detecção de drift."""
+
+    stable_file: str = "prod_periodo1_estavel.csv"
+    drifted_file: str = "prod_periodo2_drift.csv"
+    manifest_file: str = "data_drift_simulation_manifest.json"
+    report_html: Path = Path("reports/data_drift_report.html")
+    summary_csv: Path = Path("reports/data_drift_summary.csv")
+    alpha: float = Field(default=0.05, gt=0, lt=1)
+    psi_threshold: float = Field(default=0.25, gt=0)
+    n_bins: int = Field(default=10, ge=2)
+
+
 class ExperimentConfig(BaseModel):
     """Configuração raiz tipada do projeto."""
 
@@ -63,6 +76,7 @@ class ExperimentConfig(BaseModel):
     model: ModelConfig
     artifacts: ArtifactConfig
     mlflow: MlflowConfig = MlflowConfig()
+    drift: DriftConfig = DriftConfig()
 
 
 @lru_cache(maxsize=8)

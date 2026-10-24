@@ -83,7 +83,10 @@ class DriftDetector:
         ref = self._numeric_array(reference)
         cur = self._numeric_array(current)
         ref, cur = ref[np.isfinite(ref)], cur[np.isfinite(cur)]
-        self._require_samples(ref, cur)
+        if ref.size == 0 or cur.size == 0:
+            return DriftResult(
+                feature_name, "ks", float("nan"), None, False, self.alpha
+            )
         statistic, p_value = stats.ks_2samp(ref, cur)
         return DriftResult(
             feature_name,
@@ -256,6 +259,23 @@ class DriftDetector:
         if unsupported:
             raise ValueError(f"métodos numéricos não suportados: {sorted(unsupported)}")
 
+    @staticmethod
+    def _excluded_columns(
+        reference_df: pd.DataFrame,
+        current_df: pd.DataFrame,
+        include_columns: list[str] | None,
+        exclude_columns: list[str] | None,
+    ) -> set[str]:
+        """Resolve exclusões padrão ou limita a seleção a colunas explícitas."""
+        explicit_exclusions = set(exclude_columns or [])
+        if include_columns is None:
+            return DEFAULT_EXCLUDED_COLUMNS | explicit_exclusions
+        missing = set(include_columns) - set(reference_df.columns)
+        missing |= set(include_columns) - set(current_df.columns)
+        if missing:
+            raise ValueError(f"colunas de comparação ausentes: {sorted(missing)}")
+        return set(reference_df.columns) - set(include_columns) | explicit_exclusions
+
     def detect_all(
         self,
         reference_df: pd.DataFrame,
@@ -264,9 +284,12 @@ class DriftDetector:
         categorical_cols: list[str] | None = None,
         methods: list[str] | None = None,
         exclude_columns: list[str] | None = None,
+        include_columns: list[str] | None = None,
     ) -> DriftReport:
         """Aplica métodos numéricos e qui-quadrado às colunas selecionadas."""
-        excluded = DEFAULT_EXCLUDED_COLUMNS | set(exclude_columns or [])
+        excluded = self._excluded_columns(
+            reference_df, current_df, include_columns, exclude_columns
+        )
         inferred_numeric, inferred_categorical = self._infer_columns(
             reference_df, excluded
         )

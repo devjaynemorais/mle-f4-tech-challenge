@@ -1,6 +1,7 @@
 """Contratos da simulação dos dois períodos de produção."""
 
 import json
+from types import SimpleNamespace
 
 import numpy as np
 import pandas as pd
@@ -143,22 +144,36 @@ def test_simulation_rejects_invalid_target() -> None:
         simulate_periods(source, 20, 0.12, 42)
 
 
-def test_cli_writes_periods_and_manifest(tmp_path) -> None:
+def test_cli_writes_periods_and_manifest(tmp_path, monkeypatch) -> None:
     source_path = tmp_path / "prod_data.csv"
     output = tmp_path / "periods"
     _source().to_csv(source_path, index=False)
+    config = load_config()
+    monkeypatch.setattr(
+        "src.drift.data_drift_simulation.load_config",
+        lambda: SimpleNamespace(
+            data=config.data,
+            drift=config.drift.model_copy(
+                update={
+                    "stable_file": "stable-custom.csv",
+                    "drifted_file": "drift-custom.csv",
+                    "manifest_file": "manifest-custom.json",
+                }
+            ),
+        ),
+    )
 
     main(["--input", str(source_path), "--output-dir", str(output), "--n", "40"])
 
-    stable = pd.read_csv(output / "prod_periodo1_estavel.csv")
-    drift = pd.read_csv(output / "prod_periodo2_drift.csv")
-    manifest = json.loads(
-        (output / "data_drift_simulation_manifest.json").read_text(encoding="utf-8")
-    )
+    stable = pd.read_csv(output / "stable-custom.csv")
+    drift = pd.read_csv(output / "drift-custom.csv")
+    manifest = json.loads((output / "manifest-custom.json").read_text(encoding="utf-8"))
     assert len(stable) == len(drift) == 20
     assert drift.TARGET.sum() == round(0.12 * len(drift))
     assert manifest["n"] == 40
     assert manifest["period_2"]["target_source"] == "synthetic"
+    assert manifest["period_1"]["file"] == "stable-custom.csv"
+    assert manifest["period_2"]["file"] == "drift-custom.csv"
     assert manifest["input_file"] == str(source_path)
     assert not (tmp_path / "prod_periodo1_estavel.csv").exists()
 

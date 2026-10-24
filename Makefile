@@ -1,4 +1,4 @@
-.PHONY: first rebuild env install lint format test test-cov dataset train drift api compose-build compose-up compose-down
+.PHONY: first rebuild env install lint format test test-cov dataset train drift report api compose-build compose-up compose-down
 
 # `poetry` nem sempre está no PATH (ex.: Windows Store Python instala o script
 # de entrada numa pasta de usuário que não entra no PATH automaticamente).
@@ -61,6 +61,10 @@ train:
 DRIFT_ARGS ?=
 drift:
 	$(POETRY) run python -m src.drift.data_drift_simulation $(DRIFT_ARGS)
+
+# Compara os dois períodos já gerados; execute `make drift` antes.
+report:
+	$(POETRY) run python -m src.drift.report
 
 # ─── Serviço local ──────────────────────────────────────────────────────────────
 

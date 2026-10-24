@@ -10,9 +10,9 @@ camada de sustentação e confiabilidade ao redor de um modelo base: contratos
 de dados, simulação e detecção de drift, monitoramento e documentação de
 governança/LGPD.
 
-> **Status:** infraestrutura, treino base e simulação controlada de drift
-> implementados. Contratos de dados completos, detecção estatística e governança
-> ainda estão pendentes; as etapas constam abaixo.
+> **Status:** infraestrutura, treino base, simulação e relatório de detecção
+> de drift implementados. Contratos completos e governança ainda estão pendentes;
+> a geração de predições por lote também permanece pendente.
 
 ## Dataset
 
@@ -37,6 +37,7 @@ cp .env.example .env
 make dataset          # resumo do CSV bruto (valida colunas e taxa de default)
 make train            # gera os CSVs processados, treina e grava o pipeline
 make drift            # gera os períodos estável e driftado a partir de prod_data.csv
+make report           # compara os períodos e gera HTML Evidently + resumo CSV
 make lint
 make test
 make api              # http://localhost:8000/docs
@@ -51,7 +52,7 @@ de validação cruzada são gravadas em `metrics/training_metrics.json` e em um
 JSON específico para cada modelo.
 Depois, `make drift` gera `prod_periodo1_estavel.csv`,
 `prod_periodo2_drift.csv` e `data_drift_simulation_manifest.json` em
-`data/processed/`.
+`data/processed/`. Em seguida, `make report` gera o relatório de drift.
 
 Com Docker (API + Prometheus + Grafana + MLflow):
 
@@ -85,7 +86,7 @@ O contrato exato de entrada será definido pelo schema de dados da Etapa 1.
 | Etapa | Disciplina | Status | Onde fica |
 |-------|------------|--------|-----------|
 | 1. Validação de dados e contratos | Validação de Dados | Treino base pronto; contratos pendentes | `src/data/`, `src/models/` |
-| 2. Simulação e detecção de drift | Data Drift | Simulação pronta; detecção pendente | `src/drift/` |
+| 2. Simulação e detecção de drift | Data Drift | Simulação e relatório prontos; predições por lote pendentes | `src/drift/`, `reports/` |
 | 3. Observabilidade de pipelines e modelos | Monitoramento de Pipelines e Infraestrutura | Infra pronta; métricas de pipeline a implementar | `src/observability/`, `monitoring/`, `src/serving/metrics.py` |
 | 4. Governança (LGPD) e causalidade | Privacy by Design e by Default | Seção abaixo a preencher | este README |
 
@@ -152,8 +153,20 @@ sintéticos únicos em uma faixa iniciada em 1 bilhão, separada dos IDs Home Cr
 A taxa do período estável segue os rótulos originais e
 pode variar com a amostra.
 
-Métricas de detecção previstas: PSI e Kolmogorov-Smirnov por feature, com
-relatório HTML do Evidently AI em `reports/`. A detecção ainda será implementada.
+Execute `make report` depois de `make drift`. O período 1 estável é a
+referência e o período 2 driftado é o atual. O script percorre as features
+dos dois CSVs e exclui `SK_ID_CURR` e `TARGET`: o ID não é uma feature e o alvo
+do período 2 é sintético. Os artefatos ficam em `reports/`:
+
+- `data_drift_report.html`: visão geral gerada pelo preset de drift do Evidently;
+- `data_drift_summary.csv`: resultados por feature, com KS e PSI para colunas
+  numéricas e qui-quadrado para categóricas, estatística, limiar e decisão.
+
+O resumo CSV não inclui linhas de clientes, IDs ou valores individuais. Essa
+comparação identifica mudança nas distribuições de entrada (`P(X)`); não
+avalia desempenho nem comprova degradação do modelo. O `TARGET` sintético não
+entra na análise. Caminhos e parâmetros padrão podem ser ajustados em
+`config/config.yaml`.
 
 ## Governança e LGPD (Etapa 4)
 

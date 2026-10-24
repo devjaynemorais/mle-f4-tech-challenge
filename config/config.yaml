@@ -35,3 +35,13 @@ mlflow:
   # aponta o serviço de treino para http://mlflow:5000).
   tracking_uri: http://localhost:5000
   experiment: credit-scoring
+
+drift:
+  stable_file: prod_periodo1_estavel.csv
+  drifted_file: prod_periodo2_drift.csv
+  manifest_file: data_drift_simulation_manifest.json
+  report_html: reports/data_drift_report.html
+  summary_csv: reports/data_drift_summary.csv
+  alpha: 0.05
+  psi_threshold: 0.25
+  n_bins: 10
