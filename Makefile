@@ -1,4 +1,4 @@
-.PHONY: first rebuild env install lint format test test-cov dataset train api compose-build compose-up compose-down
+.PHONY: first rebuild env install lint format test test-cov dataset train drift report api compose-build compose-up compose-down
 
 # `poetry` nem sempre está no PATH (ex.: Windows Store Python instala o script
 # de entrada numa pasta de usuário que não entra no PATH automaticamente).
@@ -53,9 +53,18 @@ test-cov:
 dataset:
 	$(POETRY) run python -m src.data.loader
 
-# Treino do modelo base (Etapa 1): gera models/artifacts/credit_model.joblib.
+# Gera os dois CSVs processados, compara modelos por CV e salva o pipeline.
 train:
 	$(POETRY) run python -m src.models.train
+
+# Divide prod_data.csv em dois períodos; opções: make drift DRIFT_ARGS="--n 50000".
+DRIFT_ARGS ?=
+drift:
+	$(POETRY) run python -m src.drift.data_drift_simulation $(DRIFT_ARGS)
+
+# Compara os dois períodos já gerados; execute `make drift` antes.
+report:
+	$(POETRY) run python -m src.drift.report
 
 # ─── Serviço local ──────────────────────────────────────────────────────────────
 

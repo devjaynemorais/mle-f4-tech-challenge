@@ -1,8 +1,8 @@
 # Etapa 1 — Treino do modelo e tracking
 
-Este documento registra todas as alterações feitas na branch
-`feat/config-train-updates` e a justificativa de cada decisão. O objetivo da
-etapa é sair de uma casca (stub) para um treino reprodutível que gera o
+Este documento registra as decisões do treino base, iniciadas na branch
+`feat/config-train-updates`, e a justificativa de cada decisão. O objetivo da
+etapa foi sair de uma casca (stub) para um treino reprodutível que gera o
 artefato servido pela API, com feature engineering de domínio e rastreamento
 de experimentos no MLflow.
 
@@ -10,38 +10,53 @@ de experimentos no MLflow.
 
 | Arquivo | Natureza da mudança |
 |---|---|
-| `src/models/train.py` | Implementação completa do treino + feature engineering + logging MLflow |
-| `config/config.yaml` | Parâmetros de treino (`test_size`, `sample_size`, `random_state`) e seção `mlflow` |
+| `src/models/train.py` | Orquestração do treino e ponto de entrada |
+| `src/data/processed.py` | Split estratificado e geração dos CSVs processados |
+| `src/models/dataset.py` | Seleção das entradas do modelo na referência |
+| `src/models/features.py` | Engenharia de atributos do Home Credit |
+| `src/models/preprocessing.py` | Pipeline serializado de treino e inferência |
+| `src/models/candidates.py` | Estimadores candidatos e pesos de classe |
+| `src/models/evaluation.py` | Avaliação e seleção por ROC-AUC |
+| `src/models/artifacts.py` | Modelo e métricas locais |
+| `src/models/tracking.py` | Tracking opcional no MLflow |
+| `config/config.yaml` | Parâmetros de treino (`production_size`, `cv_folds`, `random_state`) e seção `mlflow` |
 | `src/utils/config_loader.py` | Validação dos novos campos (`ModelConfig`) e nova `MlflowConfig` |
 | `Makefile` | Alvos `train`, `first`, `rebuild` |
 | `docker-compose.yml` | Serviço `train` (profile) com tracking apontado ao MLflow |
 | `Dockerfile` | Stage `train` (imagem de serviço + cliente MLflow) |
 
-## 1. Treino do modelo (`src/models/train.py`)
+## 1. Treino do modelo (`src/models/`)
 
-O módulo era um stub. Passou a treinar, selecionar e persistir o pipeline que a
-API serve.
+O fluxo divide o CSV bruto, gera os dois datasets processados, compara os
+modelos e persiste os dois pipelines; `train.py` coordena as etapas
+implementadas nos módulos acima. A API serve o pipeline XGBoost. Os contratos
+Pandera completos ainda serão implementados.
 
-### Candidatos e seleção
+### Modelos e comparação
 
 - **Dois candidatos: Regressão Logística e XGBoost.** A Logística é a linha de
   base interpretável e barata; o XGBoost captura não-linearidades e interações,
   típicas de dados tabulares de crédito. Treinar os dois e comparar evita
   escolher um modelo "por fé".
-- **Seleção por ROC-AUC em validação.** Em crédito o alvo é desbalanceado
-  (~8% de default), então acurácia engana. ROC-AUC mede separação entre classes
-  independente do limiar e é a métrica padrão do desafio Home Credit.
-- **Split estratificado** (`train_test_split(..., stratify=target)`) para
-  preservar a proporção de default em treino e validação; sem isso a métrica de
-  validação fica instável.
+- **Comparação por validação cruzada estratificada.** Em crédito o alvo é
+  desbalanceado (~8% de default), então acurácia isolada engana. São calculadas
+  acurácia, precisão, recall, F1, ROC-AUC, Brier score e average precision para
+  cada fold e para cada modelo. ROC-AUC mede separação entre classes
+  independente do limiar.
+- **Split estratificado 80/20** (`train_test_split(..., stratify=target)`) para
+  reservar produção estável simulada. Os 80% de referência passam por cinco
+  folds estratificados para comparar os modelos; a base de 20% não é avaliada
+  nem usada no ajuste. Depois da comparação, ambos são reajustados em toda a
+  referência.
 - **Tratamento de desbalanceamento.** Logística usa `class_weight="balanced"`;
-  XGBoost usa `scale_pos_weight = n_neg / n_pos`. Sem isso os modelos tendem a
+  XGBoost usa `scale_pos_weight = n_neg / n_pos`, calculado só nas linhas de
+  treino de cada fold. Sem isso os modelos tendem a
   prever sempre "adimplente" e ignorar o default, que é justamente o risco a
   detectar.
 
-### Pipeline único (treino = inferência)
+### Pipelines (treino = inferência)
 
-O artefato é um `sklearn.Pipeline` com quatro etapas, nesta ordem:
+Cada artefato é um `sklearn.Pipeline` com quatro etapas, nesta ordem:
 
 1. `align` — `FunctionTransformer(reindex_features)` realinha as colunas da
    requisição ao conjunto visto no treino.
@@ -49,7 +64,7 @@ O artefato é um `sklearn.Pipeline` com quatro etapas, nesta ordem:
    domínio (seção 2).
 3. `prep` — `ColumnTransformer` com imputação + escala (numérico) e imputação +
    one-hot (categórico).
-4. `clf` — o classificador escolhido.
+4. `clf` — o classificador (XGBoost ou regressão logística).
 
 - **Justificativa:** encapsular alinhamento, engenharia e pré-processamento
   dentro do pipeline garante que a inferência em `/predict` aplique exatamente a
@@ -62,12 +77,19 @@ O artefato é um `sklearn.Pipeline` com quatro etapas, nesta ordem:
 
 ### Saídas
 
-- Artefato: `models/artifacts/credit_model.joblib` (caminho vem do
-  `config.yaml`).
-- Métricas: `metrics/training_metrics.json` com o ROC-AUC de cada candidato e o
-  modelo escolhido — rastro auditável fora de qualquer UI.
+- Artefatos: `models/artifacts/credit_model.joblib` (XGBoost servido pela API)
+  e `models/artifacts/logistic_baseline.joblib` (regressão logística); os nomes
+  vêm do `config.yaml`.
+- Dados: `data/processed/ref_data.csv` e `data/processed/prod_data.csv`, ambos
+  com `TARGET` real e fora do Git. O segundo é a produção-base usada depois
+  pela simulação da Etapa 2; não entra no ajuste ou seleção do modelo.
+- Métricas: `metrics/training_metrics.json` consolida as métricas de ambos os
+  modelos; `metrics/credit_model_metrics.json` e
+  `metrics/logistic_baseline_metrics.json` detalham cada modelo. Os arquivos
+  registram média, desvio e valores por fold de acurácia, precisão, recall, F1,
+  ROC-AUC, Brier score e average precision.
 
-## 2. Feature engineering de domínio (`engineer_features`)
+## 2. Feature engineering de domínio (`src/models/features.py`)
 
 São as features clássicas do Home Credit Default Risk. Todas usam divisão
 protegida (`_safe_ratio`: divisão por zero ou `inf` vira `NaN`) e acesso
@@ -80,7 +102,7 @@ protegido às colunas (`_safe_column`: coluna ausente vira série de `NaN`).
 | `CREDIT_INCOME_PERCENT` | `AMT_CREDIT / AMT_INCOME_TOTAL` | Quanto o crédito pesa sobre a renda — alavancagem |
 | `ANNUITY_INCOME_PERCENT` | `AMT_ANNUITY / AMT_INCOME_TOTAL` | Comprometimento da renda com a parcela |
 | `CREDIT_TERM` | `AMT_ANNUITY / AMT_CREDIT` | Prazo implícito do empréstimo |
-| `CREDIT_GOODS_PERCENT` | `AMT_CREDIT / AMT_GOODS_PRICE` | Crédito acima do valor do bem = risco |
+| `CREDIT_GOODS_PERCENT` | `AMT_CREDIT / AMT_GOODS_PRICE` | Crédito em relação ao preço do bem financiado, quando aplicável |
 | `INCOME_PER_PERSON` | `AMT_INCOME_TOTAL / CNT_FAM_MEMBERS` | Renda per capita do domicílio |
 
 - **Justificativa:** inadimplência é melhor explicada por *proporções* do que
@@ -115,11 +137,8 @@ Agrega `EXT_SOURCE_1/2/3` em `EXT_SOURCES_MEAN`, `EXT_SOURCES_STD` e
 
 Novos parâmetros em `model`:
 
-- `test_size: 0.2` — fração de validação para o ROC-AUC.
-- `sample_size: 50000` — amostra usada no desenvolvimento (`null` = CSV
-  completo, 307k linhas). **Justificativa:** iterar rápido durante o
-  desenvolvimento sem esperar o treino no dataset inteiro; é um botão de
-  velocidade, não um valor de produção.
+- `production_size: 0.2` — fração do CSV bruto reservada para produção estável.
+- `cv_folds: 5` — número de folds estratificados na referência de 80%.
 - `random_state: 42` — seed única para split e modelos, garantindo
   reprodutibilidade.
 
@@ -128,11 +147,11 @@ validados por Pydantic (`ModelConfig`, nova `MlflowConfig`) — configuração
 inválida falha no load, não no meio do treino. `MlflowConfig` tem defaults, de
 modo que configs e testes antigos continuam válidos.
 
-## 4. Tracking com MLflow (`log_to_mlflow`)
+## 4. Tracking com MLflow (`src/models/tracking.py`)
 
-Ao final do treino são registrados: parâmetros (`sample_size`, `test_size`,
-`random_state`, modelo escolhido), as métricas `roc_auc_<candidato>` e
-`roc_auc_best`, a tag `selected_model` e o artefato `.joblib`.
+Ao final do treino são registrados: parâmetros (`production_size`, `cv_folds`,
+`random_state`, limiar e nomes dos modelos), médias e desvios das métricas de
+validação cruzada para cada modelo, e os dois artefatos `.joblib`.
 
 - **Import opcional + best-effort.** `import mlflow` é protegido por `try`, e
   toda a função é envolvida em `try/except`: se o mlflow não estiver instalado
@@ -154,14 +173,14 @@ Ao final do treino são registrados: parâmetros (`sample_size`, `test_size`,
   `pyproject.toml`/`poetry.lock` — o que exigiria regenerar o lock e engordar o
   build da API.
 - **Novo serviço `train`** no compose, com `profiles: ["train"]` para não subir
-  junto do `docker compose up`. Monta `data` como somente-leitura e `models` +
-  `metrics` com escrita (o host recebe o artefato e as métricas). Define
+  junto do `docker compose up`. Monta `data/raw` como somente-leitura e
+  `data/processed`, `models` e `metrics` com escrita. Define
   `MLFLOW_TRACKING_URI` e `depends_on: mlflow`, de modo que `docker compose run`
   sobe o servidor de tracking automaticamente.
 
 ## 6. Makefile
 
-- `train` — roda o treino via Poetry no host.
+- `train` — gera os CSVs e roda o treino via Poetry no host.
 - `first` — bootstrap de ponta a ponta via Docker: cria o `.env` (se faltar),
   treina no container e sobe a stack em background (`api`, `prometheus`,
   `grafana`, `mlflow`). **Justificativa:** um único comando leva de repositório
@@ -177,12 +196,12 @@ fora do Git por tamanho e licença da competição.
 
 ## Resultado de referência
 
-Treino em amostra de 50 mil linhas:
+Resultado histórico anterior à divisão 80/20 e à validação cruzada, obtido em
+amostra de 50 mil linhas:
 
 | Modelo | ROC-AUC (validação) |
 |---|---|
 | Regressão Logística | 0.7429 |
 | XGBoost (escolhido) | 0.7490 |
 
-Treinar no CSV completo (`sample_size: null`) e ajustar hiperparâmetros tende a
-elevar o ROC-AUC.
+Esses números não representam o novo protocolo de validação cruzada.

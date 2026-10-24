@@ -6,26 +6,50 @@
 data/raw/application_train.csv  (Home Credit, fora do Git)
         │
         ▼
-src/data/loader.py ──► src/data/contracts.py      Etapa 1: contrato Pandera bloqueia lotes ruins
-        │
-        ├──► src/models/train.py ──► models/artifacts/credit_model.joblib
-        │                                   │
-        │                                   ▼
-        │                         src/serving/ (FastAPI)  ──► /predict, /health, /metrics
-        │                                   │                     │
-        ▼                                   ▼                     ▼
-data/processed/reference.csv     predições de produção    Prometheus ──► Grafana
-data/processed/production.csv   (Etapa 2)                 (Etapa 3: + logs do pipeline)
+src/data/loader.py ──► src/data/contracts.py      Etapa 1: contrato Pandera pendente
         │
         ▼
-src/drift/detect.py ──► Evidently (PSI/KS) ──► reports/*.html
+src/data/processed.py  (split estratificado 80/20)
+        ├──► data/processed/prod_data.csv (TARGET real) ────┐
+        └──► data/processed/ref_data.csv                    │
+                       │                                    │
+                       ▼                                    │
+             src/models/train.py                             │
+              ├── dataset.py                                 │
+              ├── features.py + preprocessing.py por fold    │
+              ├── candidates.py + evaluation.py (CV)         │
+              └── artifacts.py + tracking.py                 │
+                       │                                    │
+                       ▼                                    │
+             models/artifacts/credit_model.joblib            │
+             models/artifacts/logistic_baseline.joblib       │
+             metrics/*_metrics.json                          │
+                       │                                    │
+                       ▼                                    │
+             src/serving/ ──► /predict, /health, /metrics     │
+                       │                                    │
+                       ▼                                    ▼
+                Prometheus ──► Grafana        src/drift/data_drift_simulation.py
+                                            ├──► prod_periodo1_estavel.csv
+                                            ├──► prod_periodo2_drift.csv
+                                            └──► data_drift_simulation_manifest.json
 ```
 
 ## Decisões
 
-- **Referência × produção separadas.** O treino só enxerga o arquivo de
-  referência. O drift é medido contra o arquivo de produção simulado, que nunca
-  entra no treino. Isso evita vazamento entre as duas visões.
+- **Referência × produção separadas.** O treino lê o CSV bruto, divide 80/20
+  com estratificação pelo alvo e salva referência e produção estável simulada.
+  A escolha dos candidatos usa validação cruzada apenas na referência; o
+  arquivo de produção não entra no treino. A simulação posterior divide
+  `prod_data.csv` em período estável com `TARGET` real e período driftado com
+  `TARGET` sintético condicionado às features. O contrato Pandera segue pendente.
+- **Treino modular.** `src/models/train.py` coordena o fluxo. `dataset.py`
+  remove ID, alvo e derivadas previamente salvas; `features.py` e
+  `preprocessing.py` compõem os pipelines serializados; `candidates.py` e
+  `evaluation.py` comparam XGBoost e regressão logística por validação cruzada.
+  Os dois são ajustados na referência completa e persistidos; a API serve o
+  XGBoost, enquanto a regressão logística permanece como baseline. `artifacts.py`
+  e `tracking.py` registram os pipelines e as métricas de cada modelo.
 - **Configuração tipada.** Parâmetros do experimento ficam em
   `config/config.yaml` e são validados com Pydantic. Variáveis de ambiente
   (`.env`) ficam restritas a runtime: caminhos, portas e senhas locais.
@@ -50,4 +74,5 @@ src/drift/detect.py ──► Evidently (PSI/KS) ──► reports/*.html
   restringi-lo ao contrato de dados.
 - Persistência de métricas de drift e de logs de pipeline (Etapa 3): definir se
   vão para o Prometheus, para o MLflow ou para um arquivo consumido pelo Grafana.
-- Escolha de MLflow ou dashboard próprio para rastreamento (Etapa 3).
+- MLflow registra o treino de forma opcional; falta definir o rastreamento das
+  execuções de contratos e drift da Etapa 3.

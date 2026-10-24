@@ -24,8 +24,8 @@ services:
 
   # Treino do modelo (Etapa 1). Não sobe com `up`; rode sob demanda:
   #   docker compose run --rm train
-  # Requer data/raw/application_train.csv no host; grava o artefato em models/
-  # e as métricas em metrics/ (ambos montados com escrita).
+  # Requer data/raw/application_train.csv no host; grava datasets em
+  # data/processed/, o artefato em models/ e as métricas em metrics/.
   train:
     build:
       context: .
@@ -36,7 +36,8 @@ services:
     environment:
       MLFLOW_TRACKING_URI: http://mlflow:5000
     volumes:
-      - ./data:/app/data:ro
+      - ./data/raw:/app/data/raw:ro
+      - ./data/processed:/app/data/processed
       - ./models:/app/models
       - ./metrics:/app/metrics
     depends_on:

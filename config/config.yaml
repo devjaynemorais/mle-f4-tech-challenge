@@ -10,27 +10,38 @@ data:
   # 1 = cliente com dificuldade de pagamento (default); 0 = adimplente
   target_column: TARGET
   processed_path: data/processed
-  # Etapa 1: referência (usada no treino). Etapa 2: produção simulada (com drift).
-  reference_file: reference.csv
-  production_file: production.csv
+  # Treino gera referência e produção-base com TARGET real; drift é posterior.
+  reference_file: ref_data.csv
+  production_file: prod_data.csv
 
 model:
   # Probabilidade de default acima deste limiar vira predição "default".
   # Limiar de negócio: a ser revisado na Etapa 4 (impacto de falsos negativos).
   prediction_threshold: 0.5
-  # Fração do dataset de referência reservada para validação (ROC-AUC).
-  test_size: 0.2
-  # Amostra usada no treino durante o desenvolvimento (null = CSV completo).
-  sample_size: 50000
+  # Fração do CSV bruto reservada para a base estável de produção simulada.
+  production_size: 0.2
+  # Comparação de candidatos somente dentro da referência (80%).
+  cv_folds: 5
   # Seed de reprodutibilidade do treino (split e modelos).
   random_state: 42
 
 artifacts:
   model_path: models/artifacts
   model_file: credit_model.joblib
+  baseline_file: logistic_baseline.joblib
 
 mlflow:
   # Servidor de tracking. Sobrescrito pela env MLFLOW_TRACKING_URI (o compose
   # aponta o serviço de treino para http://mlflow:5000).
   tracking_uri: http://localhost:5000
   experiment: credit-scoring
+
+drift:
+  stable_file: prod_periodo1_estavel.csv
+  drifted_file: prod_periodo2_drift.csv
+  manifest_file: data_drift_simulation_manifest.json
+  report_html: reports/data_drift_report.html
+  summary_csv: reports/data_drift_summary.csv
+  alpha: 0.05
+  psi_threshold: 0.25
+  n_bins: 10
