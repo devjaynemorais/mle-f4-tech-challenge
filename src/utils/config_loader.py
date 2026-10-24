@@ -41,10 +41,11 @@ class ModelConfig(BaseModel):
 
 
 class ArtifactConfig(BaseModel):
-    """Diretório e nome do pipeline treinado servido pela API."""
+    """Diretório e nomes dos pipelines persistidos pelo treino."""
 
     model_path: Path
     model_file: str
+    baseline_file: str = "logistic_baseline.joblib"
 
 
 class MlflowConfig(BaseModel):

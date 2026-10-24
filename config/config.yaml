@@ -28,6 +28,7 @@ model:
 artifacts:
   model_path: models/artifacts
   model_file: credit_model.joblib
+  baseline_file: logistic_baseline.joblib
 
 mlflow:
   # Servidor de tracking. Sobrescrito pela env MLFLOW_TRACKING_URI (o compose

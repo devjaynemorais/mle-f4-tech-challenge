@@ -10,7 +10,7 @@ from sklearn.pipeline import Pipeline
 from src.models import artifacts, evaluation
 from src.models.candidates import candidate_estimators
 from src.models.dataset import split_features_target
-from src.models.evaluation import Candidate, evaluate_candidate, select_best
+from src.models.evaluation import Candidate, evaluate_candidate
 from src.models.features import engineer_features
 from src.utils.config_loader import load_config
 
@@ -61,7 +61,7 @@ def test_candidate_estimators_keep_class_imbalance_weights() -> None:
     assert estimators["xgboost"].scale_pos_weight == 3
 
 
-def test_evaluation_selects_highest_cross_validated_auc() -> None:
+def test_evaluation_reports_classification_metrics_for_each_fold() -> None:
     config = load_config()
     config = config.model_copy(
         update={"model": config.model.model_copy(update={"cv_folds": 3})}
@@ -80,11 +80,19 @@ def test_evaluation_selects_highest_cross_validated_auc() -> None:
     target = pd.Series([0, 1] * 10)
 
     evaluated = evaluate_candidate("logistic_regression", features, target, config)
-    worse = Candidate("worse", 0.1, 0.0, (0.1, 0.1, 0.1))
 
     assert evaluated.roc_auc == 1.0
     assert len(evaluated.fold_scores) == 3
-    assert select_best([worse, evaluated]).name == "logistic_regression"
+    assert set(evaluated.fold_metrics) == {
+        "accuracy",
+        "precision",
+        "recall",
+        "f1",
+        "roc_auc",
+        "brier_score",
+        "average_precision",
+    }
+    assert all(len(scores) == 3 for scores in evaluated.fold_metrics.values())
 
 
 def test_cv_rejects_reference_with_too_few_positive_rows() -> None:
@@ -133,26 +141,49 @@ def test_cv_builds_estimator_using_only_each_training_fold(monkeypatch) -> None:
     assert fold_sizes == [10, 10, 10]
 
 
-def test_artifacts_keep_configured_model_path_and_metrics_shape(
+def test_artifacts_persist_both_models_and_per_model_metrics(
     tmp_path, monkeypatch
 ) -> None:
     config = load_config()
     monkeypatch.setattr(artifacts, "PROJECT_ROOT", tmp_path)
     monkeypatch.setattr(artifacts, "METRICS_DIR", tmp_path / "metrics")
     pipeline = Pipeline([("clf", LogisticRegression())])
-    best = Candidate("logistic_regression", 0.75, 0.02, (0.73, 0.77))
-    other = Candidate("xgboost", 0.7, 0.01, (0.69, 0.71))
+    best = Candidate(
+        "logistic_regression",
+        0.75,
+        0.02,
+        (0.73, 0.77),
+        {"accuracy": (0.8, 0.9), "roc_auc": (0.73, 0.77)},
+    )
+    other = Candidate(
+        "xgboost",
+        0.7,
+        0.01,
+        (0.69, 0.71),
+        {"accuracy": (0.7, 0.8), "roc_auc": (0.69, 0.71)},
+    )
 
     model_path = artifacts.persist_pipeline(pipeline, config)
-    metrics_path = artifacts.write_metrics([best, other], best)
+    baseline_path = artifacts.persist_pipeline(
+        pipeline, config, "logistic_baseline.joblib"
+    )
+    metrics_path = artifacts.write_metrics(
+        [best, other],
+        config,
+        {
+            "logistic_regression": "logistic_baseline.joblib",
+            "xgboost": "credit_model.joblib",
+        },
+    )
 
     assert model_path == tmp_path / "models/artifacts/credit_model.joblib"
     assert model_path.exists()
+    assert baseline_path == tmp_path / "models/artifacts/logistic_baseline.joblib"
+    assert baseline_path.exists()
     assert metrics_path == tmp_path / "metrics/training_metrics.json"
-    assert json.loads(metrics_path.read_text(encoding="utf-8")) == {
-        "selected_model": "logistic_regression",
-        "cv_roc_auc": {
-            "logistic_regression": {"mean": 0.75, "std": 0.02, "folds": [0.73, 0.77]},
-            "xgboost": {"mean": 0.7, "std": 0.01, "folds": [0.69, 0.71]},
-        },
-    }
+    payload = json.loads(metrics_path.read_text(encoding="utf-8"))
+    assert set(payload["models"]) == {"logistic_regression", "xgboost"}
+    assert "selected_model" not in payload
+    assert payload["models"]["xgboost"]["metrics"]["roc_auc"]["mean"] == 0.7
+    assert (tmp_path / "metrics/credit_model_metrics.json").exists()
+    assert (tmp_path / "metrics/logistic_baseline_metrics.json").exists()

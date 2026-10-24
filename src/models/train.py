@@ -1,20 +1,19 @@
-"""Orquestra geração da referência, validação cruzada e treino final."""
+"""Orquestra preparação dos dados, treino e persistência dos modelos."""
 
 from __future__ import annotations
 
 import logging
+from pathlib import Path
+
+import pandas as pd
+from sklearn.pipeline import Pipeline
 
 from src.data.loader import load_raw_dataset
 from src.data.processed import prepare_datasets
 from src.models.artifacts import persist_pipeline, write_metrics
 from src.models.candidates import candidate_estimators
 from src.models.dataset import split_features_target
-from src.models.evaluation import (
-    Candidate,
-    evaluate_candidate,
-    fit_selected,
-    select_best,
-)
+from src.models.evaluation import Candidate, evaluate_candidate, fit_model
 from src.models.features import engineer_features
 from src.models.preprocessing import reindex_features
 from src.models.tracking import log_to_mlflow
@@ -26,29 +25,60 @@ logger = logging.getLogger(__name__)
 __all__ = ["engineer_features", "reindex_features", "train", "main"]
 
 
-def train(config: ExperimentConfig | None = None) -> Candidate:
-    """Executa o treino completo e devolve o candidato vencedor."""
+def _artifact_files(config: ExperimentConfig) -> dict[str, str]:
+    """Relaciona os nomes lógicos dos modelos aos seus arquivos."""
+    return {
+        "xgboost": config.artifacts.model_file,
+        "logistic_regression": config.artifacts.baseline_file,
+    }
+
+
+def _fit_and_persist_models(
+    names: list[str],
+    features: pd.DataFrame,
+    target: pd.Series[int],
+    config: ExperimentConfig,
+) -> dict[str, Path]:
+    """Ajusta cada pipeline na referência e grava os dois modelos."""
+    artifacts = _artifact_files(config)
+    paths = {}
+    for name in names:
+        pipeline: Pipeline = fit_model(name, features, target, config)
+        paths[name] = persist_pipeline(pipeline, config, artifacts[name])
+    return paths
+
+
+def _evaluate_models(
+    names: list[str],
+    features: pd.DataFrame,
+    target: pd.Series[int],
+    config: ExperimentConfig,
+) -> list[Candidate]:
+    """Avalia os modelos com os mesmos folds estratificados."""
+    return [evaluate_candidate(name, features, target, config) for name in names]
+
+
+def train(config: ExperimentConfig | None = None) -> list[Candidate]:
+    """Treina e persiste XGBoost e regressão logística na referência."""
     cfg = config or load_config()
     set_seed(cfg.model.random_state)
     reference, _ = prepare_datasets(load_raw_dataset(config=cfg), cfg)
     features, target = split_features_target(reference, cfg)
-    estimators = candidate_estimators(target, cfg)
-    candidates = [
-        evaluate_candidate(name, features, target, cfg) for name in estimators
-    ]
-    best = select_best(candidates)
-    pipeline = fit_selected(best, features, target, cfg)
-    artifact_path = persist_pipeline(pipeline, cfg)
-    write_metrics(candidates, best)
-    log_to_mlflow(candidates, best, artifact_path, cfg)
-    return best
+    model_names = list(candidate_estimators(target, cfg))
+    evaluations = _evaluate_models(model_names, features, target, cfg)
+    artifact_paths = _fit_and_persist_models(model_names, features, target, cfg)
+    artifact_files = _artifact_files(cfg)
+    write_metrics(evaluations, cfg, artifact_files)
+    log_to_mlflow(evaluations, artifact_paths, cfg)
+    return evaluations
 
 
 def main() -> None:
-    """Ponto de entrada de `make train`: treina e persiste o artefato."""
+    """Ponto de entrada de `make train`: treina e persiste ambos os modelos."""
     configure_logging()
-    best = train()
-    logger.info("Treino concluído; artefato pronto para servir (%s)", best.name)
+    evaluations = train()
+    names = ", ".join(item.name for item in evaluations)
+    logger.info("Treino concluído; modelos prontos para servir e comparar: %s", names)
 
 
 if __name__ == "__main__":

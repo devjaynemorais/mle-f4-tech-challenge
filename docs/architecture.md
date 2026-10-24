@@ -22,6 +22,8 @@ src/data/processed.py  (split estratificado 80/20)
                        │                                    │
                        ▼                                    │
              models/artifacts/credit_model.joblib            │
+             models/artifacts/logistic_baseline.joblib       │
+             metrics/*_metrics.json                          │
                        │                                    │
                        ▼                                    │
              src/serving/ ──► /predict, /health, /metrics     │
@@ -43,9 +45,11 @@ src/data/processed.py  (split estratificado 80/20)
   `TARGET` sintético condicionado às features. O contrato Pandera segue pendente.
 - **Treino modular.** `src/models/train.py` coordena o fluxo. `dataset.py`
   remove ID, alvo e derivadas previamente salvas; `features.py` e
-  `preprocessing.py` compõem o
-  pipeline serializado; `candidates.py` e `evaluation.py` treinam e selecionam
-  o modelo; `artifacts.py` e `tracking.py` registram os resultados.
+  `preprocessing.py` compõem os pipelines serializados; `candidates.py` e
+  `evaluation.py` comparam XGBoost e regressão logística por validação cruzada.
+  Os dois são ajustados na referência completa e persistidos; a API serve o
+  XGBoost, enquanto a regressão logística permanece como baseline. `artifacts.py`
+  e `tracking.py` registram os pipelines e as métricas de cada modelo.
 - **Configuração tipada.** Parâmetros do experimento ficam em
   `config/config.yaml` e são validados com Pydantic. Variáveis de ambiente
   (`.env`) ficam restritas a runtime: caminhos, portas e senhas locais.

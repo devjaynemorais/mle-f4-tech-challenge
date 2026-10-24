@@ -9,8 +9,14 @@ from src.models.evaluation import Candidate
 from src.utils.config_loader import load_config
 
 
-def _candidate() -> Candidate:
-    return Candidate("logistic_regression", 0.75, 0.02, (0.73, 0.77))
+def _candidate(name: str = "logistic_regression") -> Candidate:
+    return Candidate(
+        name,
+        0.75,
+        0.02,
+        (0.73, 0.77),
+        {"roc_auc": (0.73, 0.77), "accuracy": (0.8, 0.82)},
+    )
 
 
 def test_tracking_can_be_unavailable(monkeypatch) -> None:
@@ -19,24 +25,30 @@ def test_tracking_can_be_unavailable(monkeypatch) -> None:
 
     assert (
         tracking.log_to_mlflow(
-            [candidate], candidate, Path("model.joblib"), load_config()
+            [candidate], {candidate.name: Path("model.joblib")}, load_config()
         )
         is None
     )
 
 
-def test_tracking_uses_environment_uri_and_logs_selected_metric(monkeypatch) -> None:
+def test_tracking_uses_environment_uri_and_logs_all_model_artifacts(
+    monkeypatch,
+) -> None:
     client = MagicMock()
     client.start_run.return_value = nullcontext()
     monkeypatch.setattr(tracking, "mlflow", client)
     monkeypatch.setenv("MLFLOW_TRACKING_URI", "http://tracking:5000")
     candidate = _candidate()
 
-    tracking.log_to_mlflow([candidate], candidate, Path("model.joblib"), load_config())
+    tracking.log_to_mlflow(
+        [candidate], {candidate.name: Path("model.joblib")}, load_config()
+    )
 
     client.set_tracking_uri.assert_called_once_with("http://tracking:5000")
-    client.log_metric.assert_any_call("cv_roc_auc_best", 0.75)
-    client.log_artifact.assert_called_once_with("model.joblib", artifact_path="model")
+    client.log_metric.assert_any_call("cv_roc_auc_mean_logistic_regression", 0.75)
+    client.log_artifact.assert_called_once_with(
+        "model.joblib", artifact_path="models/logistic_regression"
+    )
 
 
 def test_tracking_failure_does_not_raise(monkeypatch) -> None:
@@ -47,7 +59,7 @@ def test_tracking_failure_does_not_raise(monkeypatch) -> None:
 
     assert (
         tracking.log_to_mlflow(
-            [candidate], candidate, Path("model.joblib"), load_config()
+            [candidate], {candidate.name: Path("model.joblib")}, load_config()
         )
         is None
     )

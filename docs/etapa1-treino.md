@@ -27,33 +27,36 @@ de experimentos no MLflow.
 
 ## 1. Treino do modelo (`src/models/`)
 
-O módulo inicial era um stub. O fluxo agora divide o CSV bruto, gera os dois
-datasets processados, treina, seleciona e persiste o pipeline que a API serve;
-`train.py` coordena as etapas implementadas nos módulos acima. Os contratos
+O fluxo divide o CSV bruto, gera os dois datasets processados, compara os
+modelos e persiste os dois pipelines; `train.py` coordena as etapas
+implementadas nos módulos acima. A API serve o pipeline XGBoost. Os contratos
 Pandera completos ainda serão implementados.
 
-### Candidatos e seleção
+### Modelos e comparação
 
 - **Dois candidatos: Regressão Logística e XGBoost.** A Logística é a linha de
   base interpretável e barata; o XGBoost captura não-linearidades e interações,
   típicas de dados tabulares de crédito. Treinar os dois e comparar evita
   escolher um modelo "por fé".
-- **Seleção por ROC-AUC em validação cruzada.** Em crédito o alvo é desbalanceado
-  (~8% de default), então acurácia engana. ROC-AUC mede separação entre classes
-  independente do limiar e é a métrica padrão do desafio Home Credit.
+- **Comparação por validação cruzada estratificada.** Em crédito o alvo é
+  desbalanceado (~8% de default), então acurácia isolada engana. São calculadas
+  acurácia, precisão, recall, F1, ROC-AUC, Brier score e average precision para
+  cada fold e para cada modelo. ROC-AUC mede separação entre classes
+  independente do limiar.
 - **Split estratificado 80/20** (`train_test_split(..., stratify=target)`) para
   reservar produção estável simulada. Os 80% de referência passam por cinco
-  folds estratificados para a seleção de modelo; a base de 20% não é avaliada
-  nem usada no ajuste. O vencedor é reajustado em toda a referência.
+  folds estratificados para comparar os modelos; a base de 20% não é avaliada
+  nem usada no ajuste. Depois da comparação, ambos são reajustados em toda a
+  referência.
 - **Tratamento de desbalanceamento.** Logística usa `class_weight="balanced"`;
   XGBoost usa `scale_pos_weight = n_neg / n_pos`, calculado só nas linhas de
   treino de cada fold. Sem isso os modelos tendem a
   prever sempre "adimplente" e ignorar o default, que é justamente o risco a
   detectar.
 
-### Pipeline único (treino = inferência)
+### Pipelines (treino = inferência)
 
-O artefato é um `sklearn.Pipeline` com quatro etapas, nesta ordem:
+Cada artefato é um `sklearn.Pipeline` com quatro etapas, nesta ordem:
 
 1. `align` — `FunctionTransformer(reindex_features)` realinha as colunas da
    requisição ao conjunto visto no treino.
@@ -61,7 +64,7 @@ O artefato é um `sklearn.Pipeline` com quatro etapas, nesta ordem:
    domínio (seção 2).
 3. `prep` — `ColumnTransformer` com imputação + escala (numérico) e imputação +
    one-hot (categórico).
-4. `clf` — o classificador escolhido.
+4. `clf` — o classificador (XGBoost ou regressão logística).
 
 - **Justificativa:** encapsular alinhamento, engenharia e pré-processamento
   dentro do pipeline garante que a inferência em `/predict` aplique exatamente a
@@ -74,13 +77,17 @@ O artefato é um `sklearn.Pipeline` com quatro etapas, nesta ordem:
 
 ### Saídas
 
-- Artefato: `models/artifacts/credit_model.joblib` (caminho vem do
-  `config.yaml`).
+- Artefatos: `models/artifacts/credit_model.joblib` (XGBoost servido pela API)
+  e `models/artifacts/logistic_baseline.joblib` (regressão logística); os nomes
+  vêm do `config.yaml`.
 - Dados: `data/processed/ref_data.csv` e `data/processed/prod_data.csv`, ambos
   com `TARGET` real e fora do Git. O segundo é a produção-base usada depois
   pela simulação da Etapa 2; não entra no ajuste ou seleção do modelo.
-- Métricas: `metrics/training_metrics.json` com média, desvio e resultados por
-  fold do ROC-AUC de cada candidato, além do modelo escolhido.
+- Métricas: `metrics/training_metrics.json` consolida as métricas de ambos os
+  modelos; `metrics/credit_model_metrics.json` e
+  `metrics/logistic_baseline_metrics.json` detalham cada modelo. Os arquivos
+  registram média, desvio e valores por fold de acurácia, precisão, recall, F1,
+  ROC-AUC, Brier score e average precision.
 
 ## 2. Feature engineering de domínio (`src/models/features.py`)
 
@@ -143,9 +150,8 @@ modo que configs e testes antigos continuam válidos.
 ## 4. Tracking com MLflow (`src/models/tracking.py`)
 
 Ao final do treino são registrados: parâmetros (`production_size`, `cv_folds`,
-`random_state`, modelo escolhido), as métricas `cv_roc_auc_mean_<candidato>`,
-`cv_roc_auc_std_<candidato>` e `cv_roc_auc_best`, a tag `selected_model` e o
-artefato `.joblib`.
+`random_state`, limiar e nomes dos modelos), médias e desvios das métricas de
+validação cruzada para cada modelo, e os dois artefatos `.joblib`.
 
 - **Import opcional + best-effort.** `import mlflow` é protegido por `try`, e
   toda a função é envolvida em `try/except`: se o mlflow não estiver instalado

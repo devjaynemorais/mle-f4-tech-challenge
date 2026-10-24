@@ -12,7 +12,7 @@ from src.models import train as training
 from src.utils.config_loader import load_config
 
 
-def test_train_generates_two_datasets_and_fits_model_on_reference(
+def test_train_generates_datasets_and_persists_both_models_from_reference(
     tmp_path, monkeypatch
 ) -> None:
     for module in (loader, processed, artifacts):
@@ -21,7 +21,10 @@ def test_train_generates_two_datasets_and_fits_model_on_reference(
     monkeypatch.setattr(training, "log_to_mlflow", lambda *args: None)
 
     def candidate(*args):
-        return {"logistic_regression": LogisticRegression(max_iter=1000)}
+        return {
+            "logistic_regression": LogisticRegression(max_iter=1000),
+            "xgboost": LogisticRegression(max_iter=1000),
+        }
 
     monkeypatch.setattr(training, "candidate_estimators", candidate)
     monkeypatch.setattr(evaluation, "candidate_estimators", candidate)
@@ -44,17 +47,31 @@ def test_train_generates_two_datasets_and_fits_model_on_reference(
         update={"model": load_config().model.model_copy(update={"cv_folds": 2})}
     )
 
-    winner = training.train(config)
+    evaluations = training.train(config)
 
     reference = pd.read_csv(tmp_path / "data/processed/ref_data.csv")
     stable = pd.read_csv(tmp_path / "data/processed/prod_data.csv")
     model = joblib.load(tmp_path / "models/artifacts/credit_model.joblib")
+    baseline = joblib.load(tmp_path / "models/artifacts/logistic_baseline.joblib")
     metrics = json.loads((tmp_path / "metrics/training_metrics.json").read_text())
     assert len(reference) == 32
     assert len(stable) == 8
     assert stable["TARGET"].isin([0, 1]).all()
-    assert winner.name == metrics["selected_model"]
-    assert len(metrics["cv_roc_auc"][winner.name]["folds"]) == 2
+    assert {item.name for item in evaluations} == {
+        "logistic_regression",
+        "xgboost",
+    }
+    assert set(metrics["models"]) == {"logistic_regression", "xgboost"}
+    assert len(metrics["models"]["xgboost"]["metrics"]["roc_auc"]["folds"]) == 2
+    assert (
+        len(metrics["models"]["logistic_regression"]["metrics"]["brier_score"]["folds"])
+        == 2
+    )
     assert model.predict_proba(
         reference.drop(columns=["SK_ID_CURR", "TARGET"])
     ).shape == (32, 2)
+    assert baseline.predict_proba(
+        reference.drop(columns=["SK_ID_CURR", "TARGET"])
+    ).shape == (32, 2)
+    assert (tmp_path / "metrics/credit_model_metrics.json").exists()
+    assert (tmp_path / "metrics/logistic_baseline_metrics.json").exists()

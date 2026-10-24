@@ -45,7 +45,10 @@ make api              # http://localhost:8000/docs
 Sem modelo treinado, `/health` responde `degraded` e `/predict` responde HTTP 503.
 Execute `make train` após disponibilizar o CSV bruto. O comando gera
 `data/processed/ref_data.csv`, `data/processed/prod_data.csv` e
-`models/artifacts/credit_model.joblib`.
+`models/artifacts/credit_model.joblib` (XGBoost) e
+`models/artifacts/logistic_baseline.joblib` (regressão logística). As métricas
+de validação cruzada são gravadas em `metrics/training_metrics.json` e em um
+JSON específico para cada modelo.
 Depois, `make drift` gera `prod_periodo1_estavel.csv`,
 `prod_periodo2_drift.csv` e `data_drift_simulation_manifest.json` em
 `data/processed/`.
@@ -95,11 +98,13 @@ arquitetura em [docs/architecture.md](docs/architecture.md).
 `make train` divide `application_train.csv` de forma estratificada: 80% formam
 `ref_data.csv` (referência com `TARGET`) e 20% formam `prod_data.csv`
 (produção-base simulada, com `TARGET` real do Home Credit). Ambos recebem limpeza e engenharia
-de atributos determinísticas e ficam fora do Git. Os candidatos são comparados
-por validação cruzada estratificada apenas nos 80%; o vencedor é ajustado
-novamente com toda a referência. Imputação, escala e codificação são ajustadas
-separadamente em cada fold. A produção-base é reservada para comparação de drift
-e não representa dados reais de produção. `SK_ID_CURR` fica nos CSVs locais
+de atributos determinísticas e ficam fora do Git. Regressão Logística e XGBoost
+são comparados por validação cruzada estratificada apenas nos 80%; depois, cada
+pipeline é ajustado novamente com toda a referência. O XGBoost é o artefato
+carregado pela API e a regressão logística permanece como baseline.
+Imputação, escala e codificação são ajustadas separadamente em cada fold. A
+produção-base é reservada para comparação de drift e não representa dados reais
+de produção. `SK_ID_CURR` fica nos CSVs locais
 para conferir a separação das amostras, mas não entra no modelo nem deve entrar
 nas estatísticas de drift.
 
