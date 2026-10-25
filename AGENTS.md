@@ -17,16 +17,16 @@ mapeamento de requisitos está em `docs/checklist_requisitos_tc4.md`.
 - `README.md`: visão geral, execução e seção de governança (LGPD) a preencher.
 - `config/config.yaml`: colunas, caminhos, limiar e artefatos do experimento.
 - `.env.example`: configuração de runtime (paths, portas, senhas locais).
-- `src/data/`: leitura do CSV bruto e, na Etapa 1, contratos Pandera.
+- `src/data/`: leitura do CSV bruto, contrato Pandera (`contracts.py`) e porta de ingestão (`ingestion.py`).
 - `src/models/`: treino do modelo base (Etapa 1).
-- `src/drift/data_drift_simulation.py`: gera os dois períodos simulados; detecção
-  estatística ainda pendente em `src/drift/detect.py`.
-- `src/observability/`: logs e métricas do pipeline (Etapa 3, ainda stub).
+- `src/drift/`: simulação dos períodos, detecção estatística (`detect.py`), relatórios Evidently e predição em lote (`predict_batch.py`).
+- `src/observability/`: eventos estruturados, métricas dos jobs (Pushgateway), alertas e runs MLflow (Etapa 3).
+- `docs/adr/`: decisões de arquitetura; `docs/metricas_saude.md` é o catálogo de métricas e alertas.
 - `src/serving/`: API FastAPI, schemas, métricas Prometheus e carregamento do modelo.
-- `monitoring/`: Prometheus e dashboard Grafana versionado.
+- `monitoring/`: Prometheus (regras de alerta) e dashboards Grafana versionados.
 - `tests/`: unidade, serving e teste arquitetural.
 - `Dockerfile`: stages `builder` e `api`.
-- `docker-compose.yml`: API, Prometheus, Grafana e MLflow.
+- `docker-compose.yml`: API, Prometheus, Grafana, MLflow e Pushgateway; serviços `train` e `drift` sob demanda.
 
 ## Contratos que devem ser preservados
 
@@ -70,6 +70,15 @@ Métricas Prometheus que devem continuar existindo:
 O dashboard `monitoring/grafana/dashboards/credit-api-overview.json` usa esses
 nomes. Se mudar uma métrica, atualize o dashboard e os testes juntos.
 
+Métricas dos jobs em lote (Pushgateway) estão em `docs/metricas_saude.md` e
+são gauges do último estado. Ao criar ou renomear uma, atualize esse catálogo,
+`monitoring/prometheus/alerts.yml` e `pipeline-health.json`: um teste confere
+a coerência entre os três.
+
+Eventos do pipeline (`logs/pipeline_events.jsonl`) só aceitam as chaves da
+lista de permissão de `src/observability/events.py`. Nunca inclua
+identificadores, rendas, créditos, linhas de clientes nem mensagens de exceção.
+
 ### Configuração
 
 - Parâmetros de experimento (colunas, limiar, artefatos) vão em
@@ -91,6 +100,11 @@ make api
 make compose-build
 make compose-up
 make compose-down
+make predict          # predições em lote dos períodos de produção
+make pipeline         # treino, drift, predição e relatórios sob um run_id
+make contract-demo    # lote válido passa, lote com erros é barrado
+make demo-observability   # cenários: estável, driftado, lote inválido
+make compose-pipeline # o pipeline nos containers (Pushgateway e MLflow)
 ```
 
 No Windows, se `poetry` não estiver no PATH, use o padrão do `Makefile`
