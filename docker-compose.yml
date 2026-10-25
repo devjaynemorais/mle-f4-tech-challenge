@@ -35,13 +35,47 @@ services:
     command: ["python", "-m", "src.models.train"]
     environment:
       MLFLOW_TRACKING_URI: http://mlflow:5000
+      PUSHGATEWAY_URL: http://pushgateway:9091
     volumes:
       - ./data/raw:/app/data/raw:ro
       - ./data/processed:/app/data/processed
       - ./models:/app/models
       - ./metrics:/app/metrics
+      - ./logs:/app/logs
     depends_on:
       - mlflow
+      - pushgateway
+    networks:
+      - ml-network
+
+  # Simulação de drift, predição em lote e relatórios (Etapas 2 e 3). Roda sob
+  # demanda, depois do treino, na imagem do treino (que tem MLflow):
+  #   docker compose run --rm drift
+  drift:
+    build:
+      context: .
+      target: train
+    image: mle-f4-tech-challenge-train
+    profiles: ["train"]
+    command:
+      - sh
+      - -c
+      - >
+        python -m src.drift.data_drift_simulation &&
+        python -m src.drift.predict_batch &&
+        python -m src.drift.report
+    environment:
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      PUSHGATEWAY_URL: http://pushgateway:9091
+    volumes:
+      - ./data/processed:/app/data/processed
+      - ./models:/app/models:ro
+      - ./metrics:/app/metrics
+      - ./reports:/app/reports
+      - ./logs:/app/logs
+    depends_on:
+      - mlflow
+      - pushgateway
     networks:
       - ml-network
 
@@ -59,16 +93,27 @@ services:
     networks:
       - ml-network
 
+  # Recebe as métricas dos jobs em lote (treino, drift, predição). Sem
+  # autenticação: publicado só em 127.0.0.1.
+  pushgateway:
+    image: prom/pushgateway:v1.9.0
+    ports:
+      - "127.0.0.1:${PUSHGATEWAY_PORT:-9091}:9091"
+    networks:
+      - ml-network
+
   prometheus:
     image: prom/prometheus:v2.53.0
     ports:
       - "${PROMETHEUS_PORT:-9090}:9090"
     volumes:
       - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
     networks:
       - ml-network
     depends_on:
       - api
+      - pushgateway
 
   grafana:
     image: grafana/grafana:11.1.0

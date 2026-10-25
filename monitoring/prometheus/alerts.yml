@@ -1,0 +1,73 @@
+# Regras de alerta da Etapa 3 (ver docs/adr/0001 e docs/metricas_saude.md).
+# Limiares de drift espelham `observability.drift_*` do config/config.yaml;
+# um teste automatizado garante que os dois continuam iguais.
+groups:
+  - name: credit-api
+    rules:
+      - alert: ModelNotLoaded
+        expr: max(credit_model_loaded) == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "API em modo degradado: nenhum modelo carregado"
+
+      - alert: HighErrorRate
+        expr: >
+          100 * sum(rate(http_requests_total{status_code=~"5.."}[5m]))
+          / sum(rate(http_requests_total[5m])) > 5
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Mais de 5% das requisições terminaram em erro 5xx"
+
+      - alert: HighInferenceLatency
+        expr: >
+          histogram_quantile(0.95,
+          sum(rate(credit_prediction_duration_seconds_bucket[5m])) by (le)) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "p95 da inferência acima de 0,5 s"
+
+  - name: credit-pipeline
+    rules:
+      - alert: PipelineStageFailed
+        expr: pipeline_stage_last_status == 0
+        labels:
+          severity: critical
+        annotations:
+          summary: "Etapa {{ $labels.stage }} ({{ $labels.dataset }}) falhou na última execução"
+
+      - alert: PipelineStale
+        expr: time() - pipeline_stage_last_success_timestamp_seconds > 86400
+        labels:
+          severity: warning
+        annotations:
+          summary: "Etapa {{ $labels.stage }} sem sucesso há mais de 24 h"
+
+      - alert: DataContractViolation
+        expr: data_batch_blocked == 1
+        labels:
+          severity: warning
+        annotations:
+          summary: "Lote {{ $labels.dataset }} barrado pelo contrato de dados"
+
+  - name: credit-drift
+    rules:
+      - alert: DataDriftDetected
+        expr: >
+          drift_share{method="psi"} >= 0.02 and drift_share{method="psi"} < 0.05
+        labels:
+          severity: warning
+        annotations:
+          summary: "Drift em {{ $labels.comparison }}: fração de features com PSI alto acima do aviso"
+
+      - alert: DataDriftSevere
+        expr: drift_share{method="psi"} >= 0.05
+        labels:
+          severity: critical
+        annotations:
+          summary: "Drift severo em {{ $labels.comparison }}: fração de features com PSI alto acima do crítico"

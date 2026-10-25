@@ -44,6 +44,10 @@ cover/
 # Logs
 *.log
 
+# Eventos estruturados do pipeline (Etapa 3)
+logs/
+*.jsonl
+
 # Jupyter Notebook
 .ipynb_checkpoints
 

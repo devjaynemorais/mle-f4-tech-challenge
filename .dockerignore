@@ -11,6 +11,7 @@ htmlcov/
 data/
 models/
 metrics/
+logs/
 reports/
 docs/
 tests/
