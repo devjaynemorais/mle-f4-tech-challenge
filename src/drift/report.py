@@ -11,6 +11,10 @@ from evidently.presets import DataDriftPreset
 
 from src.drift.detect import DriftDetector, DriftReport
 from src.drift.evaluation import generate_drift_summary
+from src.observability.alerts import Alert, drift_alerts, emit_alerts
+from src.observability.drift_metrics import publish_drift, summarize_drift
+from src.observability.events import PipelineEvent, current_run_id, emit
+from src.observability.stage_tracking import track_stage
 from src.utils.config_loader import PROJECT_ROOT, ExperimentConfig, load_config
 
 
@@ -95,7 +99,7 @@ def generate_report(
     return report
 
 
-def _configured_paths(config: ExperimentConfig) -> tuple[Path, Path, Path, Path]:
+def configured_paths(config: ExperimentConfig) -> tuple[Path, Path, Path, Path]:
     """Resolve entradas processadas e saídas relativas à raiz do projeto."""
     processed = PROJECT_ROOT / config.data.processed_path
     return (
@@ -104,6 +108,65 @@ def _configured_paths(config: ExperimentConfig) -> tuple[Path, Path, Path, Path]
         PROJECT_ROOT / config.drift.report_html,
         PROJECT_ROOT / config.drift.summary_csv,
     )
+
+
+def baseline_paths(config: ExperimentConfig) -> tuple[Path, Path, Path, Path]:
+    """Resolve a comparação de sanidade: referência de treino x período estável."""
+    processed = PROJECT_ROOT / config.data.processed_path
+    return (
+        processed / config.data.reference_file,
+        processed / config.drift.stable_file,
+        PROJECT_ROOT / config.drift.baseline_report_html,
+        PROJECT_ROOT / config.drift.baseline_summary_csv,
+    )
+
+
+def _observe(
+    report: DriftReport, comparison: str, config: ExperimentConfig
+) -> list[Alert]:
+    """Publica métricas, evento de resultado e alertas de uma comparação."""
+    summary = summarize_drift(report)
+    alerts = drift_alerts(summary, comparison, config.observability)
+    details = {
+        "comparison": comparison,
+        "n_features": summary.totals.get("psi", 0),
+        "n_drifted": summary.drifted.get("psi", 0),
+        "share": round(summary.share("psi"), 4),
+        "max_psi": round(summary.max_psi, 4),
+        "features": report.drifted_features[:50],
+    }
+    run_id = current_run_id()
+    emit(PipelineEvent(run_id, "drift_detection", "drift_result", details=details))
+    emit_alerts(alerts)
+    publish_drift(comparison, summary, len(alerts))
+    return alerts
+
+
+def run_comparison(
+    comparison: str,
+    paths: tuple[Path, Path, Path, Path],
+    config: ExperimentConfig,
+) -> DriftReport:
+    """Executa uma comparação sob rastreio da etapa de detecção de drift."""
+    reference, current, html_path, summary_path = paths
+    with track_stage("drift_detection", comparison) as stage:
+        report = generate_report(
+            reference,
+            current,
+            html_path,
+            summary_path,
+            config.data.id_column,
+            config.data.target_column,
+            config.drift.alpha,
+            config.drift.psi_threshold,
+            config.drift.n_bins,
+        )
+        alerts = _observe(report, comparison, config)
+        stage.rows = len(pd.read_csv(current, usecols=[config.data.id_column]))
+        stage.metrics["drifted_features"] = float(report.n_features_drifted)
+        stage.metrics["alerts"] = float(len(alerts))
+        stage.artifacts += [html_path, summary_path]
+    return report
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -119,20 +182,10 @@ def main(argv: list[str] | None = None) -> None:
 
 
 def _main_from_config(config: ExperimentConfig) -> None:
-    """Passa a configuração validada para o gerador dos dois artefatos."""
-    reference, current, html_path, summary_path = _configured_paths(config)
-    generate_report(
-        reference,
-        current,
-        html_path,
-        summary_path,
-        config.data.id_column,
-        config.data.target_column,
-        config.drift.alpha,
-        config.drift.psi_threshold,
-        config.drift.n_bins,
-    )
-    print("Relatório de drift e resumo CSV gerados.")
+    """Gera a comparação de sanidade e a comparação estável x driftado."""
+    run_comparison("reference_vs_stable", baseline_paths(config), config)
+    run_comparison("stable_vs_drifted", configured_paths(config), config)
+    print("Relatórios de drift e resumos CSV gerados.")
 
 
 if __name__ == "__main__":
