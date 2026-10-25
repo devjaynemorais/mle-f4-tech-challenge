@@ -6,7 +6,7 @@ from functools import lru_cache
 from pathlib import Path
 
 import yaml
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 CONFIG_PATH = PROJECT_ROOT / "config" / "config.yaml"
@@ -66,6 +66,36 @@ class DriftConfig(BaseModel):
     alpha: float = Field(default=0.05, gt=0, lt=1)
     psi_threshold: float = Field(default=0.25, gt=0)
     n_bins: int = Field(default=10, ge=2)
+    baseline_report_html: Path = Path("reports/data_drift_reference_vs_stable.html")
+    baseline_summary_csv: Path = Path("reports/data_drift_reference_vs_stable.csv")
+    predictions_stable_file: str = "predicoes_periodo1_estavel.csv"
+    predictions_drifted_file: str = "predicoes_periodo2_drift.csv"
+    scoring_summary_file: Path = Path("metrics/batch_scoring_summary.json")
+
+
+class ContractConfig(BaseModel):
+    """Limites das regras rígidas do contrato de dados."""
+
+    min_age_years: int = Field(default=18, ge=0)
+    max_income_total: float = Field(default=1_000_000_000, gt=0)
+
+
+class ObservabilityConfig(BaseModel):
+    """Destinos e limiares da observabilidade do pipeline."""
+
+    events_file: Path = Path("logs/pipeline_events.jsonl")
+    events_max_bytes: int = Field(default=5_000_000, gt=0)
+    pushgateway_job: str = "credit-pipeline"
+    mlflow_experiment: str = "credit-pipeline-monitoring"
+    drift_warning_share: float = Field(default=0.02, gt=0, lt=1)
+    drift_critical_share: float = Field(default=0.05, gt=0, lt=1)
+
+    @model_validator(mode="after")
+    def _critical_not_below_warning(self) -> ObservabilityConfig:
+        """Garante que o limiar crítico não fique abaixo do de aviso."""
+        if self.drift_critical_share < self.drift_warning_share:
+            raise ValueError("drift_critical_share deve ser >= drift_warning_share")
+        return self
 
 
 class ExperimentConfig(BaseModel):
@@ -77,6 +107,8 @@ class ExperimentConfig(BaseModel):
     artifacts: ArtifactConfig
     mlflow: MlflowConfig = MlflowConfig()
     drift: DriftConfig = DriftConfig()
+    contract: ContractConfig = ContractConfig()
+    observability: ObservabilityConfig = ObservabilityConfig()
 
 
 @lru_cache(maxsize=8)

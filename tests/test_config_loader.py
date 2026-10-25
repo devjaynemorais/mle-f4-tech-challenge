@@ -51,3 +51,24 @@ def test_load_config_rejects_invalid_drift_parameters(
 
     with pytest.raises(ValidationError, match=field):
         load_config(invalid_path)
+
+
+def test_observability_and_contract_sections_have_expected_defaults() -> None:
+    config = load_config()
+
+    assert config.contract.min_age_years == 18
+    assert config.observability.events_file.name == "pipeline_events.jsonl"
+    assert (
+        config.observability.drift_warning_share
+        <= config.observability.drift_critical_share
+    )
+
+
+def test_observability_rejects_critical_share_below_warning() -> None:
+    import pytest
+    from pydantic import ValidationError
+
+    from src.utils.config_loader import ObservabilityConfig
+
+    with pytest.raises(ValidationError):
+        ObservabilityConfig(drift_warning_share=0.1, drift_critical_share=0.05)
