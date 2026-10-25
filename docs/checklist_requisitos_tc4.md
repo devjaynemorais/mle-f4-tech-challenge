@@ -17,7 +17,7 @@ Fonte: [MLET - Tech Challenge - Fase 4.pdf](MLET%20-%20Tech%20Challenge%20-%20Fa
 | Prática | Status |
 |---------|--------|
 | Separação entre dataset de referência (treino) e de produção (drift) | Implementada em `make train` e `make drift`; arquivos locais fora do Git |
-| Pelo menos 3 regras rígidas de qualidade de dados | Implementada: 8 regras (ID único, alvo binário, renda, crédito, idade mínima, nulos, tipos, colunas) |
+| Pelo menos 3 regras rígidas de qualidade de dados | Implementada: 6 regras de negócio nomeadas (ID único, alvo binário, renda positiva, teto de renda, crédito positivo, idade mínima), mais checagens de nulos, tipo e colunas obrigatórias |
 | Relatório estatístico da mudança de distribuição (PSI ou KS) | Implementado; CSV gerado por `make report` |
 | Documentação de compliance com plano de privacidade (LGPD) | Pendente (Etapa 4) |
 

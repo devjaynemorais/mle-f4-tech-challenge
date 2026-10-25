@@ -143,7 +143,7 @@ Reabrir qualquer item só se a execução real com o CSV contradisser a premissa
 
 | Bloqueio ou ponto | Situação | Como foi resolvido |
 |-------------------|----------|--------------------|
-| 🔴 Contrato Pandera vazio | Resolvido | `src/data/contracts.py`: 5 colunas, 8 regras nomeadas; barra o lote na ingestão e na predição |
+| 🔴 Contrato Pandera vazio | Resolvido | `src/data/contracts.py`: 5 colunas, 6 regras de negócio nomeadas mais nulos, tipos e colunas; barra o lote na ingestão e na predição |
 | 🔴 Lote inválido bloqueado | Resolvido | `make contract-demo` e teste de ponta a ponta (treino não roda se o contrato falha) |
 | 🔴 Predições em lote | Resolvido | `src/drift/predict_batch.py` + `make predict`; AUC só no período estável |
 | 🟠 CSV do Kaggle ausente | **Aberto** | Validado com dados sintéticos (testes e stack Docker); falta rodar com o CSV real |

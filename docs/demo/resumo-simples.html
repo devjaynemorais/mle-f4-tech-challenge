@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<title>Resumo Simples do Projeto</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root {
+    --ink: #0d1a1c; --paper: #e6ece9; --text: #16211f; --text-dim: #52625d;
+    --accent: #1f7a6c; --accent-wash: rgba(31, 122, 108, 0.08);
+    --good: #337a55; --bad: #a8433c; --warn: #b07a12;
+    --good-wash: rgba(51, 122, 85, 0.12); --bad-wash: rgba(168, 67, 60, 0.1); --warn-wash: rgba(176, 122, 18, 0.12);
+    --line: rgba(22, 33, 31, 0.14); --card: #ffffff;
+    color-scheme: light only;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #e6ece9; color: #16211f; font: 17px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; }
+  main { max-width: 860px; margin: 0 auto; padding: 0 20px 70px; }
+  h1, h2 { font-family: "Iowan Old Style", Charter, Georgia, serif; font-weight: 600; margin: 0 0 8px; }
+  h1 { font-size: 2rem; }
+  h2 { font-size: 1.35rem; margin-top: 44px; display: flex; align-items: center; gap: 10px; }
+  p { margin: 8px 0; }
+  .dim { color: var(--text-dim); }
+  code { font-family: ui-monospace, monospace; background: var(--line); padding: 1px 6px; border-radius: 3px; font-size: 0.86em; }
+  .hero { margin: 0 -20px; padding: 36px 20px 18px; background: linear-gradient(180deg, var(--accent-wash), transparent); border-radius: 0 0 20px 20px; }
+  .dot { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; }
+  .ok .dot { background: var(--good); } .todo .dot { background: var(--bad); } .block .dot { background: var(--warn); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 18px; margin: 10px 0; border-left-width: 5px; }
+  .ok .card { border-left-color: var(--good); } .todo .card { border-left-color: var(--bad); } .block .card { border-left-color: var(--warn); }
+  .card b { display: block; }
+  .card span { color: var(--text-dim); font-size: 0.92rem; }
+  .pill { display: inline-block; font: 700 0.72rem ui-monospace, monospace; padding: 2px 10px; border-radius: 999px; margin-left: auto; }
+  .ok .pill { color: var(--good); background: var(--good-wash); }
+  .todo .pill { color: var(--bad); background: var(--bad-wash); }
+  .block .pill { color: var(--warn); background: var(--warn-wash); }
+  ul { padding-left: 22px; margin: 6px 0; }
+  li { margin: 4px 0; }
+  .next { border: 2px solid var(--accent); background: var(--accent-wash); border-radius: 10px; padding: 16px 20px; margin-top: 12px; }
+  footer { margin-top: 48px; font-size: 0.8rem; color: var(--text-dim); border-top: 1px solid var(--line); padding-top: 14px; }
+</style>
+</head>
+<body>
+<main>
+  <div style="background:#fff3cd;color:#3d2f00;border:1px solid #b07a12;border-radius:8px;padding:10px 16px;margin:12px 0;font:15px/1.5 sans-serif">Este resumo é de <b>antes</b> da implementação. O que foi feito está em <code>relatorio-etapa3.html</code>.</div>
+  <header class="hero">
+    <h1>Resumo simples do projeto</h1>
+    <p class="dim">Tech Challenge Fase 4 · o que já está pronto e o que falta. Atualizado em 25/10/2026.</p>
+  </header>
+
+  <section class="ok">
+    <h2><span class="dot"></span> Já está pronto <span class="pill">FEITO</span></h2>
+    <div class="card"><b>Treino do modelo</b><span>O código treina dois modelos (XGBoost e regressão logística). Mas o arquivo do modelo não existe no seu computador, porque falta o CSV do Kaggle.</span></div>
+    <div class="card"><b>Simulação de drift</b><span>Os dados de produção foram alterados de propósito (idade, crédito, escores).</span></div>
+    <div class="card"><b>Relatório de drift</b><span>O relatório do Evidently e a tabela com PSI/KS já foram gerados. 17 features driftaram em ao menos um teste e 7 pelo PSI.</span></div>
+    <div class="card"><b>API e painel básico</b><span>A API mede requisições, erros, tempo de resposta e predições. Existe um painel no Grafana com isso e o MLflow está no Docker.</span></div>
+  </section>
+
+  <section class="todo">
+    <h2><span class="dot"></span> Falta fazer <span class="pill">PENDENTE</span></h2>
+
+    <div class="card"><b>Etapa 1 · vale 25%</b>
+      <ul><li>O contrato de dados com as regras de qualidade não existe (o arquivo está vazio).</li>
+      <li>Faltam pelo menos 3 regras, como idade maior que 18, renda sem nulos e sem duplicados.</li>
+      <li>Falta mostrar um lote ruim sendo barrado.</li></ul></div>
+
+    <div class="card"><b>Etapa 2 · vale 25%</b>
+      <ul><li>Faltam as predições do modelo nos dados de produção.</li>
+      <li>Falta comparar os dados de treino com os de produção. Hoje o relatório compara só o período 1 com o período 2.</li></ul></div>
+
+    <div class="card"><b>Etapa 3 · vale 20% · foco agora</b>
+      <ul><li>Métricas do pipeline: se cada etapa deu certo, quanto tempo levou e quantas linhas processou.</li>
+      <li>Mandar os resultados do drift para o painel.</li>
+      <li>Alertas.</li>
+      <li>Logs organizados.</li>
+      <li>Registrar cada execução no MLflow.</li>
+      <li>Um painel novo de saúde do pipeline.</li></ul></div>
+
+    <div class="card"><b>Etapa 4 · vale 15%</b>
+      <ul><li>Escrever a parte de LGPD no README: dados pessoais, base legal, retenção e análise causal.</li></ul></div>
+
+    <div class="card"><b>Vídeo · vale 15%</b>
+      <ul><li>Gravar o vídeo de 5 minutos.</li></ul></div>
+  </section>
+
+  <section class="block">
+    <h2><span class="dot"></span> O que bloqueia <span class="pill">ATENÇÃO</span></h2>
+    <div class="card"><b>1. Contrato de dados (Etapa 1)</b><span>Está vazio. É o maior risco de nota.</span></div>
+    <div class="card"><b>2. Predições em lote (Etapa 2)</b><span>Não existem ainda.</span></div>
+    <div class="card"><b>3. CSV do Kaggle</b><span>Não está no seu computador, então nada roda de ponta a ponta aqui.</span></div>
+  </section>
+
+  <section>
+    <h2>O que já fiz nesta conversa</h2>
+    <p>Só planejamento, sem mexer em código. Criei em <code>docs/</code>:</p>
+    <ul>
+      <li>A ADR, com as decisões da Etapa 3.</li>
+      <li>Um diagnóstico dos bloqueios.</li>
+      <li>Uma página visual (<code>docs/demo/etapa3-observabilidade.html</code>).</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Próximo passo sugerido</h2>
+    <div class="next">Começar pelas predições em lote e, em paralelo, fazer o contrato de dados. Depois vem o resto da Etapa 3.</div>
+  </section>
+
+  <footer>Arquivo: <code>docs/demo/resumo-simples.html</code></footer>
+</main>
+</body>
+</html>

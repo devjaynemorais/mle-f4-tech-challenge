@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<title>Relatório da Etapa 3 — o que foi feito e testado</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root { color-scheme: light only; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #e6ece9; color: #16211f; font: 17px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; }
+  main { max-width: 940px; margin: 0 auto; padding: 0 20px 80px; }
+  h1, h2, h3 { font-family: "Iowan Old Style", Charter, Georgia, serif; font-weight: 600; margin: 0 0 8px; color: #0d1a1c; }
+  h1 { font-size: 2.1rem; }
+  h2 { font-size: 1.45rem; margin-top: 52px; }
+  h3 { font-size: 1.05rem; margin-top: 22px; }
+  p { margin: 8px 0; }
+  .dim { color: #52625d; }
+  code { font-family: ui-monospace, monospace; background: #d3ddd8; color: #16211f; padding: 1px 6px; border-radius: 3px; font-size: 0.86em; }
+  .hero { margin: 0 -20px; padding: 38px 20px 22px; background: linear-gradient(180deg, rgba(31,122,108,.12), transparent); border-radius: 0 0 22px 22px; }
+  .eyebrow { font: 700 0.75rem ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: #1f7a6c; }
+  .grid { display: grid; gap: 14px; }
+  .g4 { grid-template-columns: repeat(4, 1fr); } .g3 { grid-template-columns: repeat(3, 1fr); } .g2 { grid-template-columns: repeat(2, 1fr); }
+  @media (max-width: 760px) { .g4, .g3, .g2 { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 520px) { .g4, .g3, .g2 { grid-template-columns: 1fr; } }
+  .card { background: #fff; border: 1px solid #c9d4cf; border-radius: 10px; padding: 14px 18px; }
+  .stat { font: 600 2rem Georgia, serif; line-height: 1.1; color: #1f7a6c; }
+  .stat small { display: block; font: 400 .8rem -apple-system, sans-serif; color: #52625d; margin-top: 4px; }
+  table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid #c9d4cf; border-radius: 10px; overflow: hidden; font-size: .9rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #e0e7e3; vertical-align: top; }
+  th { background: #f1f5f3; font: 700 .72rem ui-monospace, monospace; letter-spacing: .05em; text-transform: uppercase; color: #52625d; }
+  tr:last-child td { border-bottom: none; }
+  .tag { display: inline-block; font: 700 .7rem ui-monospace, monospace; padding: 2px 9px; border-radius: 999px; white-space: nowrap; }
+  .ok { background: #d6ecdf; color: #1d5a39; } .no { background: #f4d9d6; color: #7d2c26; } .part { background: #f6e8c4; color: #6b4a07; }
+  img { max-width: 100%; border: 1px solid #c9d4cf; border-radius: 10px; display: block; }
+  figure { margin: 14px 0; } figcaption { font-size: .85rem; color: #52625d; margin-top: 6px; }
+  ul { padding-left: 22px; } li { margin: 4px 0; }
+  pre { background: #16211f; color: #e6ece9; padding: 14px 16px; border-radius: 10px; overflow-x: auto; font-size: .85rem; line-height: 1.5; }
+  .note { border-left: 4px solid #b07a12; background: #fff8e6; padding: 10px 16px; border-radius: 0 8px 8px 0; margin: 14px 0; font-size: .92rem; }
+  footer { margin-top: 56px; font-size: .8rem; color: #52625d; border-top: 1px solid #c9d4cf; padding-top: 14px; }
+</style>
+</head>
+<body>
+<main>
+  <header class="hero">
+    <div class="eyebrow">Tech Challenge Fase 4 · Etapa 3 · 25/10/2026</div>
+    <h1>O que foi feito e testado</h1>
+    <p class="dim">Relatório em linguagem simples. Cobre os bloqueios que existiam, a implementação da ADR da Etapa 3, como tudo foi testado e o que ainda não está coberto. O vídeo não fazia parte desta entrega.</p>
+  </header>
+
+  <section>
+    <h2>1 · Resumo rápido</h2>
+    <div class="grid g4">
+      <div class="card"><div class="stat">144<small>testes automáticos passando (antes eram 77)</small></div></div>
+      <div class="card"><div class="stat">92%<small>do código de <code>src/</code> coberto pelos testes</small></div></div>
+      <div class="card"><div class="stat">3 de 3<small>bloqueios 🔴 resolvidos</small></div></div>
+      <div class="card"><div class="stat">9<small>commits semânticos novos</small></div></div>
+    </div>
+    <p style="margin-top:16px">Em palavras simples: agora o projeto <b>barra dados ruins antes do modelo</b>, <b>pontua os dados de produção</b>, <b>registra o que cada etapa do pipeline fez</b>, <b>mostra tudo em painéis</b> e <b>dispara alertas</b> quando um lote é barrado, uma etapa falha ou os dados mudam demais (drift).</p>
+    <div class="note"><b>Importante:</b> tudo foi validado com <b>dados sintéticos</b> (inventados, só para teste), porque o CSV real do Kaggle não está no seu computador. Antes de entregar, rode com o CSV real e confira os limiares de alerta.</div>
+  </section>
+
+  <section>
+    <h2>2 · Os bloqueios e como cada um foi resolvido</h2>
+    <table>
+      <thead><tr><th>Bloqueio</th><th>Antes</th><th>Agora</th></tr></thead>
+      <tbody>
+        <tr><td><b>Contrato de dados</b> (Etapa 1)</td><td>Arquivo vazio, nenhuma regra</td><td>Contrato Pandera em 5 colunas, com <b>6 regras de negócio</b> mais checagens de nulos, tipos e colunas obrigatórias. Se o lote violar qualquer uma, ele é <b>barrado</b> e nada é treinado nem pontuado.</td></tr>
+        <tr><td><b>Mostrar um lote ruim barrado</b></td><td>Não existia</td><td><code>make contract-demo</code> mostra um lote bom passando e um lote com erros sendo bloqueado.</td></tr>
+        <tr><td><b>Predições em lote</b> (Etapa 2)</td><td>Pendente</td><td><code>make predict</code> pontua o período estável e o driftado com o mesmo modelo da API.</td></tr>
+        <tr><td>MLflow fora do container</td><td>Não estava instalado no projeto</td><td>Novo serviço <code>drift</code> no Docker reaproveita a imagem do treino.</td></tr>
+        <tr><td>Comparar com a referência do treino</td><td>O relatório só comparava período 1 × 2</td><td>Também compara <b>referência × período estável</b>, que não deve mostrar drift.</td></tr>
+        <tr><td>CSV do Kaggle ausente</td><td>Nada rodava de ponta a ponta</td><td><span class="tag part">PARCIAL</span> Validado com dados sintéticos; falta rodar com o CSV real.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>3 · O que foi construído</h2>
+    <h3>Etapa 1 — contrato de dados</h3>
+    <ul>
+      <li>Regras: ID obrigatório e sem repetição, alvo só 0 ou 1, renda obrigatória, positiva e abaixo de um teto, crédito positivo, idade acima de 18 anos, tipos corretos e colunas presentes.</li>
+      <li>O resultado diz só <b>qual regra falhou e quantas linhas</b>. Nunca mostra valores nem identificadores.</li>
+      <li>Vale para o CSV bruto (no treino) e para cada período de produção (na predição).</li>
+    </ul>
+    <h3>Etapa 2 — drift e predições</h3>
+    <ul>
+      <li>Predição em lote dos dois períodos. A AUC só é calculada no período estável, porque o alvo do período driftado é sintético.</li>
+      <li>Relatório extra: referência de treino × período estável (a linha de base, que deve ficar sem drift).</li>
+    </ul>
+    <h3>Etapa 3 — observabilidade</h3>
+    <ul>
+      <li><b>Logs centralizados:</b> cada etapa grava eventos em <code>logs/pipeline_events.jsonl</code>, todos com o mesmo <code>run_id</code>. Em caso de erro, grava só o tipo do erro.</li>
+      <li><b>Métricas de saúde:</b> status, duração, linhas processadas, lotes barrados, drift por feature, score do modelo e alertas.</li>
+      <li><b>Alertas:</b> 8 regras no Prometheus (falha de etapa, lote barrado, drift moderado e severo, modelo fora do ar, erros e lentidão da API, etapa parada há mais de 24 h).</li>
+      <li><b>MLflow:</b> uma execução registrada por etapa, com o relatório HTML do Evidently anexado.</li>
+      <li><b>Painel novo no Grafana:</b> "Credit Pipeline — Saúde, Drift e Alertas".</li>
+      <li><b>Comandos novos:</b> <code>make predict</code>, <code>make pipeline</code>, <code>make contract-demo</code>, <code>make demo-observability</code>, <code>make compose-pipeline</code>, <code>make metrics-reset</code>.</li>
+      <li><b>Documentação:</b> ADR, diagnóstico, catálogo de métricas (<code>docs/metricas_saude.md</code>), README, checklist, arquitetura e guia dos agentes atualizados.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>4 · Como foi testado</h2>
+    <div class="grid g3">
+      <div class="card"><b>1. Testes automáticos</b><p class="dim">144 testes passando e lint limpo. Incluem cada regra do contrato, o formato dos eventos (sem dados pessoais), as métricas, os limiares de alerta e um pipeline completo de ponta a ponta.</p></div>
+      <div class="card"><b>2. Validação das regras</b><p class="dim"><code>promtool</code> (a ferramenta oficial do Prometheus) aprovou as 8 regras de alerta e a configuração.</p></div>
+      <div class="card"><b>3. Stack real no Docker</b><p class="dim">Subi API, Prometheus, Grafana, MLflow e Pushgateway, rodei treino e drift nos containers e conferi alertas, métricas e painéis.</p></div>
+    </div>
+
+    <h3>Resultado da execução real (dados sintéticos)</h3>
+    <table>
+      <thead><tr><th>Cenário</th><th>Esperado</th><th>Resultado</th></tr></thead>
+      <tbody>
+        <tr><td>Referência × período estável</td><td>Sem drift, sem alerta</td><td><span class="tag ok">OK</span> 0% das features com drift; nenhum alerta</td></tr>
+        <tr><td>Estável × driftado</td><td>Drift severo, alerta crítico</td><td><span class="tag ok">OK</span> 40% das features; alerta <code>DataDriftSevere</code></td></tr>
+        <tr><td>Lote com erros</td><td>Barrado, com alerta</td><td><span class="tag ok">OK</span> 4 regras violadas; alertas <code>DataContractViolation</code> e <code>PipelineStageFailed</code></td></tr>
+        <tr><td>Treino com lote inválido</td><td>Nada é treinado</td><td><span class="tag ok">OK</span> sem modelo e sem dados processados gerados</td></tr>
+        <tr><td>Período de produção corrompido</td><td>Predição bloqueada</td><td><span class="tag ok">OK</span> sem resumo gerado</td></tr>
+        <tr><td>Privacidade dos logs</td><td>Sem ID, renda ou crédito</td><td><span class="tag ok">OK</span> teste automático verifica o arquivo de eventos</td></tr>
+        <tr><td>API depois do treino</td><td>Modelo carregado</td><td><span class="tag ok">OK</span> <code>/health</code> ok e <code>/predict</code> respondendo</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>5 · Provas visuais</h2>
+    <p class="dim">Capturas da execução real da stack com dados sintéticos.</p>
+    <figure><img src="img/grafana-pipeline-health.png" alt="Painel do Grafana com status das etapas, drift por feature e alertas" /><figcaption>Painel de saúde do pipeline: etapas, duração, volume, drift por feature (PSI), violações do contrato, alertas e score do modelo.</figcaption></figure>
+    <figure><img src="img/prometheus-alertas.png" alt="Página de alertas do Prometheus com três alertas disparando" /><figcaption>Alertas no Prometheus: 3 disparando (drift severo, etapa com falha e lote barrado) e 5 inativos.</figcaption></figure>
+    <figure><img src="img/mlflow-runs.png" alt="MLflow com uma execução por etapa do pipeline" /><figcaption>MLflow: uma execução registrada por etapa do pipeline.</figcaption></figure>
+  </section>
+
+  <section>
+    <h2>6 · O que isso cobre do enunciado</h2>
+    <table>
+      <thead><tr><th>Item do enunciado</th><th>Situação</th><th>Onde está</th></tr></thead>
+      <tbody>
+        <tr><td>Pipeline de validação de dados (data contracts)</td><td><span class="tag ok">COBERTO</span></td><td><code>src/data/contracts.py</code>, <code>ingestion.py</code></td></tr>
+        <tr><td>Pelo menos 3 regras rígidas de qualidade</td><td><span class="tag ok">COBERTO</span></td><td>6 regras de negócio + nulos, tipos e colunas</td></tr>
+        <tr><td>Forçar lote com erros e mostrar o bloqueio</td><td><span class="tag ok">COBERTO</span></td><td><code>make contract-demo</code></td></tr>
+        <tr><td>Predições para o dataset de produção</td><td><span class="tag ok">COBERTO</span></td><td><code>make predict</code></td></tr>
+        <tr><td>Scripts de simulação e detecção de drift, relatório PSI/KS</td><td><span class="tag ok">COBERTO</span></td><td>Já existia; ganhou a comparação com a referência</td></tr>
+        <tr><td>Etapa 3: centralizar logs e métricas</td><td><span class="tag ok">COBERTO</span></td><td>Eventos JSONL + métricas + MLflow</td></tr>
+        <tr><td>Etapa 3: MLflow ou dashboard interativo</td><td><span class="tag ok">COBERTO</span></td><td>Os dois: Grafana e MLflow</td></tr>
+        <tr><td>Etapa 3: documentar métricas de saúde</td><td><span class="tag ok">COBERTO</span></td><td><code>docs/metricas_saude.md</code></td></tr>
+        <tr><td>Etapa 3: alertas de degradação do modelo</td><td><span class="tag ok">COBERTO</span></td><td>8 regras; drift, score e erros</td></tr>
+        <tr><td>Separação referência × produção</td><td><span class="tag ok">COBERTO</span></td><td>Já existia, reforçada pela comparação nova</td></tr>
+        <tr><td>Histórico de commits semântico</td><td><span class="tag part">PARCIAL</span></td><td>Os 9 novos seguem o padrão; 7 antigos não (decisão: não reescrever)</td></tr>
+        <tr><td>Governança e LGPD no README (Etapa 4)</td><td><span class="tag no">NÃO FEITO</span></td><td>Fora do escopo desta entrega</td></tr>
+        <tr><td>Vídeo STAR</td><td><span class="tag no">NÃO FEITO</span></td><td>Pedido explícito para não fazer</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Pelos critérios de avaliação</h3>
+    <table>
+      <thead><tr><th>Critério</th><th>Peso</th><th>Situação</th></tr></thead>
+      <tbody>
+        <tr><td>Validação de dados</td><td>25%</td><td><span class="tag ok">IMPLEMENTADO</span> contrato intercepta anomalias</td></tr>
+        <tr><td>Detecção de drift</td><td>25%</td><td><span class="tag ok">IMPLEMENTADO</span> simulação, Evidently, PSI/KS e predições</td></tr>
+        <tr><td>Observabilidade e logs</td><td>20%</td><td><span class="tag ok">IMPLEMENTADO</span> painéis, alertas e relatórios automáticos</td></tr>
+        <tr><td>Governança (LGPD)</td><td>15%</td><td><span class="tag no">PENDENTE</span> Etapa 4</td></tr>
+        <tr><td>Vídeo STAR</td><td>15%</td><td><span class="tag no">PENDENTE</span></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>7 · O que ainda falta ou merece atenção</h2>
+    <ul>
+      <li><b>Rodar com o CSV real do Kaggle.</b> Tudo foi validado com dados sintéticos.</li>
+      <li><b>Conferir os limiares de alerta.</b> Hoje: aviso a 2% e crítico a 5% das features com PSI alto. Com o resumo real versionado, o cenário driftado dá 6,1%, perto do limite. Confirme que referência × estável fica abaixo de 2%.</li>
+      <li><b>Etapa 4:</b> LGPD, base legal, retenção e análise causal. O arquivo de eventos também precisa entrar no plano de retenção.</li>
+      <li><b>Rotular os gráficos do período 2</b> (<code>reports/*.png</code>) como "alvo sintético".</li>
+      <li><b>Conferir o HTML do Evidently versionado</b> para garantir que só tem agregados.</li>
+      <li>Loki (logs em painel) não foi feito; ficou como opcional.</li>
+      <li>Os alertas aparecem no Prometheus e no Grafana, mas não são enviados por e-mail ou Slack.</li>
+      <li>Os 7 commits antigos fora do padrão continuam no histórico.</li>
+      <li>O Grafana usa acesso anônimo e senha padrão no compose: serve só para uso local.</li>
+      <li>Depois da demonstração do lote inválido, o alerta fica ativo até <code>make metrics-reset</code>.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>8 · Como rodar</h2>
+<pre>make install                         # dependências
+docker compose up -d --build         # API, Prometheus, Grafana, MLflow, Pushgateway
+make compose-pipeline                # treino + drift + predição + relatórios nos containers
+
+make contract-demo                   # lote bom passa, lote ruim é barrado (não precisa do CSV)
+make demo-observability              # cenários: estável, driftado, lote inválido
+make metrics-reset                   # limpa as métricas guardadas no Pushgateway
+
+# Grafana    http://localhost:3000   Prometheus http://localhost:9090/alerts
+# MLflow     http://localhost:5000   Pushgateway http://localhost:9091</pre>
+  </section>
+
+  <section>
+    <h2>9 · Commits criados</h2>
+    <table>
+      <thead><tr><th>Commit</th><th>O que entrega</th></tr></thead>
+      <tbody>
+        <tr><td><code>feat(config)</code></td><td>Seções de contrato e observabilidade no YAML</td></tr>
+        <tr><td><code>feat(observability)</code></td><td>Eventos estruturados, rastreio de etapas e métricas de job</td></tr>
+        <tr><td><code>feat(data)</code></td><td>Contrato Pandera e porta de ingestão que bloqueia lotes inválidos</td></tr>
+        <tr><td><code>feat(observability)</code></td><td>Métricas de drift e alertas por limiar configurável</td></tr>
+        <tr><td><code>feat(drift)</code></td><td>Predições em lote dos períodos de produção</td></tr>
+        <tr><td><code>feat(pipeline)</code></td><td>Instrumentação do treino e relatórios, orquestração sob um <code>run_id</code></td></tr>
+        <tr><td><code>docs(observability)</code></td><td>ADR 0001, diagnóstico e catálogo de métricas</td></tr>
+        <tr><td><code>feat(monitoring)</code></td><td>Pushgateway, regras de alerta e dashboard de saúde</td></tr>
+        <tr><td><code>docs</code></td><td>README, checklist, arquitetura e guia dos agentes atualizados</td></tr>
+      </tbody>
+    </table>
+    <p class="dim">Uma décima mudança, <code>docs(demo)</code>, adiciona este relatório e as capturas de tela.</p>
+  </section>
+
+  <footer>Arquivos: <code>docs/demo/relatorio-etapa3.html</code> · <code>docs/adr/0001-observabilidade-pipeline-e-modelo.md</code> · <code>docs/metricas_saude.md</code></footer>
+</main>
+</body>
+</html>
