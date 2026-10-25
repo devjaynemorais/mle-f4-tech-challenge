@@ -33,7 +33,7 @@ make metrics-reset                           # zera as métricas guardadas no Pu
 | Dashboard de pipeline, drift e alertas | `http://localhost:3000` → "Credit Pipeline — Saúde, Drift e Alertas" |
 | Dashboard da API | `http://localhost:3000` → "Credit Scoring API — Overview" |
 | Alertas e regras | `http://localhost:9090/alerts` |
-| Runs por etapa e relatórios HTML | `http://localhost:5000` → experimento `credit-pipeline-monitoring` |
+| Runs por etapa e relatórios HTML | `http://localhost:5000` → experimento `credit-pipeline-monitoring` → run `drift_detection-<run_id>` → aba **Artifacts** → pasta `drift_detection/` (parâmetro `dataset` diz a comparação) |
 | Métricas brutas dos jobs | `http://localhost:9091` |
 
 ## Logs de execução (eventos estruturados)
@@ -134,6 +134,12 @@ milhares de linhas o teste marca diferenças irrelevantes (17 de 114 features).
 
 ## Limitações
 
+- **Runs antigas do MLflow.** Runs criadas antes de o servidor passar a receber os
+  artefatos por proxy (`--artifacts-destination`) guardaram o caminho dentro do
+  container do job e **não têm** o HTML. Para começar limpo:
+  `docker compose down`, apague a pasta `mlflow-data/` e rode
+  `docker compose up -d` e `make compose-pipeline`. O HTML do Evidently também
+  fica sempre em `reports/`.
 - As métricas dos jobs mostram o **último** estado de cada etapa, não uma série
   histórica; use o MLflow e o JSONL para o histórico.
 - O Pushgateway guarda dados em memória: reiniciá-lo (`make metrics-reset`)

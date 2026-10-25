@@ -152,3 +152,13 @@ def test_events_and_logs_are_not_versioned() -> None:
 
     assert "logs/" in ignore
     assert "*.jsonl" in ignore
+
+
+def test_mlflow_server_proxies_artifacts_so_jobs_do_not_need_the_volume() -> None:
+    compose = yaml.safe_load(Path("docker-compose.yml").read_text("utf-8"))
+    command = " ".join(
+        str(part) for part in compose["services"]["mlflow"]["command"].split()
+    )
+
+    assert "--artifacts-destination /mlflow-data/artifacts" in command
+    assert "--default-artifact-root" not in command

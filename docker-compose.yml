@@ -80,13 +80,15 @@ services:
     networks:
       - ml-network
 
+  # O servidor recebe os artefatos (HTML do Evidently, modelos) por proxy e os
+  # guarda em ./mlflow-data/artifacts; os jobs não precisam montar essa pasta.
   mlflow:
     image: ghcr.io/mlflow/mlflow:v2.16.0
     entrypoint: ["mlflow"]
     command: >
       server --host 0.0.0.0 --port 5000
       --backend-store-uri sqlite:///mlflow-data/mlflow.db
-      --default-artifact-root /mlflow-data/artifacts
+      --artifacts-destination /mlflow-data/artifacts
     ports:
       - "${MLFLOW_PORT:-5000}:5000"
     volumes:
