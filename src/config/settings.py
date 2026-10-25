@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     # Diretório-base do pipeline servido pela API (nome do arquivo vem do YAML)
     model_artifacts_path: str = "models/artifacts"
 
+    # Pushgateway dos jobs em lote; vazio desativa o envio de métricas.
+    pushgateway_url: str = ""
+
     # API serving
     api_host: str = "0.0.0.0"
     api_port: int = 8000

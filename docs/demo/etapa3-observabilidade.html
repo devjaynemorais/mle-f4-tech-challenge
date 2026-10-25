@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<title>Etapa 3 — Plano de Observabilidade</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root {
+    --ink: #0d1a1c; --paper: #e6ece9; --paper-2: #dbe4e0;
+    --text: #16211f; --text-dim: #52625d;
+    --accent: #1f7a6c; --accent-wash: rgba(31, 122, 108, 0.08);
+    --good: #337a55; --warn: #b07a12; --soft: #c0621f; --bad: #a8433c;
+    --good-wash: rgba(51, 122, 85, 0.12); --warn-wash: rgba(176, 122, 18, 0.12);
+    --soft-wash: rgba(192, 98, 31, 0.12); --bad-wash: rgba(168, 67, 60, 0.1);
+    --line: rgba(22, 33, 31, 0.14); --card: #ffffffb0; --bar-muted: #b7c3bd;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --text: #dfe9e5; --text-dim: #9bafa5; --accent: #4fb39f; --accent-wash: rgba(79, 179, 159, 0.14);
+      --good: #6fbf8f; --warn: #e0b04a; --soft: #e58f55; --bad: #d3796a;
+      --good-wash: rgba(111, 191, 143, 0.14); --warn-wash: rgba(224, 176, 74, 0.14);
+      --soft-wash: rgba(229, 143, 85, 0.14); --bad-wash: rgba(211, 121, 106, 0.14);
+      --line: rgba(223, 233, 229, 0.14); --card: #10201d99; --bar-muted: #3c4a46;
+      color-scheme: dark;
+    }
+    body { background: var(--ink); }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--text); font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; }
+  main { max-width: 1040px; margin: 0 auto; padding: 0 20px 80px; }
+  h1, h2, h3 { font-family: "Iowan Old Style", Charter, Georgia, "Noto Serif", serif; font-weight: 600; margin: 0 0 6px; }
+  h1 { font-size: 2rem; letter-spacing: -0.01em; }
+  h2 { font-size: 1.3rem; margin-top: 52px; }
+  h3 { font-size: 1.02rem; }
+  p { margin: 8px 0; }
+  .lede, .dim { color: var(--text-dim); }
+  .lede { max-width: 68ch; }
+  .eyebrow { font: 600 0.75rem ui-monospace, monospace; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
+  code { font-family: ui-monospace, monospace; background: var(--line); padding: 1px 5px; border-radius: 3px; font-size: 0.86em; }
+  .hero { margin: 0 -20px 8px; padding: 40px 20px 22px; background: linear-gradient(180deg, var(--accent-wash), transparent); border-radius: 0 0 20px 20px; }
+  .note { border-left: 3px solid var(--bad); background: var(--card); border-radius: 0 6px 6px 0; padding: 10px 14px; margin: 16px 0 0; font-size: 0.82rem; color: var(--text-dim); max-width: 72ch; }
+  .panel { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 18px 20px; }
+  .grid { display: grid; gap: 14px; }
+  .g2 { grid-template-columns: repeat(2, 1fr); } .g3 { grid-template-columns: repeat(3, 1fr); } .g4 { grid-template-columns: repeat(4, 1fr); }
+  @media (max-width: 860px) { .g2, .g3, .g4 { grid-template-columns: 1fr; } }
+  .badge { display: inline-block; font: 700 0.68rem ui-monospace, monospace; letter-spacing: 0.04em; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+  .b-block { color: var(--bad); background: var(--bad-wash); border: 1px solid var(--bad); }
+  .b-soft { color: var(--soft); background: var(--soft-wash); border: 1px solid var(--soft); }
+  .b-warn { color: var(--warn); background: var(--warn-wash); border: 1px solid var(--warn); }
+  .b-ok { color: var(--good); background: var(--good-wash); border: 1px solid var(--good); }
+  .stat { font: 600 1.8rem Georgia, serif; line-height: 1.1; }
+  .stat small { font: 400 0.75rem -apple-system, sans-serif; color: var(--text-dim); display: block; margin-top: 4px; }
+  .filters { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; }
+  .filters button { font: inherit; font-size: 0.8rem; cursor: pointer; background: var(--paper); color: var(--text); border: 1px solid var(--line); border-radius: 999px; padding: 4px 14px; }
+  .filters button[aria-pressed="true"] { background: var(--accent); color: var(--paper); border-color: var(--accent); }
+  table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+  th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font: 700 0.7rem ui-monospace, monospace; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-dim); }
+  tr[hidden] { display: none; }
+  .weight { height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; margin-top: 8px; }
+  .weight > i { display: block; height: 100%; }
+  .bars { display: grid; gap: 7px; margin-top: 12px; }
+  .bar { display: grid; grid-template-columns: 170px 1fr 64px; gap: 10px; align-items: center; font-size: 0.8rem; }
+  .bar .track { position: relative; height: 14px; background: var(--line); border-radius: 3px; }
+  .bar .fill { position: absolute; inset: 0 auto 0 0; border-radius: 3px; background: var(--bad); }
+  .bar .fill.low { background: var(--bar-muted); }
+  .bar .thr { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--text); }
+  .bar .val { text-align: right; font-family: ui-monospace, monospace; }
+  @media (max-width: 600px) { .bar { grid-template-columns: 110px 1fr 52px; } }
+  svg text { fill: var(--text); font: 12px -apple-system, sans-serif; }
+  svg .dim { fill: var(--text-dim); font-size: 10.5px; }
+  svg .box { fill: var(--card); stroke: var(--line); stroke-width: 1.2; }
+  svg .new { fill: var(--accent-wash); stroke: var(--accent); stroke-width: 1.6; stroke-dasharray: 5 3; }
+  svg .arrow { stroke: var(--text-dim); stroke-width: 1.4; fill: none; marker-end: url(#ah); }
+  svg .arrow.new { stroke: var(--accent); stroke-dasharray: none; fill: none; }
+  .mock { position: relative; }
+  .mock .tag { position: absolute; top: 10px; right: 14px; }
+  .tile { background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; }
+  .tile h4 { margin: 0 0 6px; font: 700 0.7rem ui-monospace, monospace; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-dim); }
+  .spark { width: 100%; height: 46px; }
+  .spark polyline { fill: none; stroke: var(--accent); stroke-width: 2; }
+  .spark .alert { stroke: var(--bad); }
+  .steps { counter-reset: s; display: grid; gap: 10px; padding: 0; list-style: none; }
+  .steps li { counter-increment: s; display: grid; grid-template-columns: 38px 1fr; gap: 12px; align-items: start; background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; }
+  .steps li::before { content: "F" counter(s) ; font: 700 0.8rem ui-monospace, monospace; color: var(--paper); background: var(--accent); border-radius: 6px; padding: 4px 0; text-align: center; }
+  .steps li:first-child::before { content: "F0"; background: var(--bad); }
+  .steps li:nth-child(8)::before { background: var(--bar-muted); color: var(--text); }
+  .steps b { display: block; }
+  .steps span { font-size: 0.82rem; color: var(--text-dim); }
+  ul.check { list-style: none; padding: 0; margin: 8px 0; font-size: 0.88rem; }
+  ul.check li { padding: 4px 0 4px 26px; position: relative; }
+  ul.check li::before { content: "☐"; position: absolute; left: 0; color: var(--accent); }
+  footer { margin-top: 56px; font-size: 0.78rem; color: var(--text-dim); border-top: 1px solid var(--line); padding-top: 14px; }
+</style>
+</head>
+<body>
+<main>
+  <div style="background:#fff3cd;color:#3d2f00;border:1px solid #b07a12;border-radius:8px;padding:10px 16px;margin:12px 0;font:15px/1.5 sans-serif">Este é o <b>plano</b> original da Etapa 3. A implementação está descrita em <code>relatorio-etapa3.html</code>.</div>
+  <header class="hero">
+    <div class="eyebrow">Tech Challenge Fase 4 · FIAP MLE · Etapa 3</div>
+    <h1>Observabilidade de pipelines e modelos</h1>
+    <p class="lede">Avaliação do que já foi entregue nas etapas 1 e 2, os bloqueios para a Etapa 3 e o plano proposto na
+      <code>ADR 0001</code>. Este é um documento de planejamento: nenhum código foi alterado.</p>
+    <p class="note"><b>Como ler esta página.</b> Os números de drift (seção 3) vêm de <code>reports/data_drift_summary.csv</code>, já versionado. Os painéis da seção 5 são <b>mockups ilustrativos</b> da proposta, sem dados reais. O modelo é apoio à análise de crédito, não decisão automática.</p>
+  </header>
+
+  <section>
+    <h2>1 · Onde estamos</h2>
+    <div class="grid g4">
+      <div class="panel"><div class="stat" style="color:var(--bad)">0 / 3<small>regras rígidas de contrato implementadas (mínimo exigido: 3)</small></div></div>
+      <div class="panel"><div class="stat" style="color:var(--bad)">1<small>entrega pendente da Etapa 2: predições do dataset de produção</small></div></div>
+      <div class="panel"><div class="stat">7 + 10<small>métricas de API existentes + painéis Grafana (só infraestrutura da API)</small></div></div>
+      <div class="panel"><div class="stat" style="color:var(--good)">54<small>testes passando (+2 módulos sem coletar: <code>matplotlib</code> ausente no <code>.venv</code>) · ruff limpo</small></div></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>2 · Bloqueios e pontos de atenção</h2>
+    <p class="lede">Classificação em relação à Etapa 3. <b>BLOCK</b> impede entregar parte dela; <b>SOFT-BLOCK</b> permite começar, mas não fechar nem demonstrar.</p>
+    <div class="filters" role="group" aria-label="Filtrar por classificação">
+      <button aria-pressed="true" data-f="all">Todos</button>
+      <button aria-pressed="false" data-f="block">BLOCK</button>
+      <button aria-pressed="false" data-f="soft">SOFT-BLOCK</button>
+      <button aria-pressed="false" data-f="warn">ATENÇÃO</button>
+      <button aria-pressed="false" data-f="ok">OK</button>
+    </div>
+    <div class="panel" style="padding:4px 8px">
+    <table id="blocks">
+      <thead><tr><th>Etapa</th><th>Item</th><th>Marca</th><th>Impacto na Etapa 3</th></tr></thead>
+      <tbody>
+        <tr data-k="block"><td>1</td><td>Contrato Pandera: <code>contracts.py</code> é só docstring; 0 regras, nenhum teste</td><td><span class="badge b-block">BLOCK</span></td><td>Sem contrato não há falha de ingestão real para registrar nem demonstrar. Pode-se construir só com a interface; fechar e gravar exige o contrato. Pesa 25% da nota.</td></tr>
+        <tr data-k="block"><td>1</td><td>Lote inválido bloqueado, com script de demonstração</td><td><span class="badge b-block">BLOCK</span></td><td>É o evento <code>contract_violation</code> que alimenta o alerta de qualidade.</td></tr>
+        <tr data-k="block"><td>2</td><td>Predições em lote do dataset de produção</td><td><span class="badge b-block">BLOCK</span></td><td>Sem elas não há score médio, taxa de <code>default</code> predita nem alerta de degradação do modelo. Tarefa pequena; abre a F0.</td></tr>
+        <tr data-k="soft"><td>1</td><td>Treino: código completo, mas <code>models/artifacts/</code> vazio e <code>data/raw/</code> sem o CSV</td><td><span class="badge b-soft">SOFT-BLOCK</span></td><td>Impede validar o fluxo de ponta a ponta localmente. Baixar o CSV do Kaggle (não versionar).</td></tr>
+        <tr data-k="warn"><td>2</td><td>Concept drift: só <code>P(X)</code> é avaliado; o alvo do período 2 é sintético</td><td><span class="badge b-warn">ATENÇÃO</span></td><td>Painéis tratam score e taxa predita como proxy; desempenho no período 2 nunca é publicado.</td></tr>
+        <tr data-k="warn"><td>—</td><td>7 commits recentes fora do padrão <code>tipo(escopo): resumo</code></td><td><span class="badge b-warn">ATENÇÃO</span></td><td>O enunciado avalia histórico semântico. Reescrever só com autorização.</td></tr>
+        <tr data-k="warn"><td>—</td><td><code>.venv</code> sem <code>matplotlib</code>/<code>seaborn</code></td><td><span class="badge b-warn">ATENÇÃO</span></td><td><code>make install</code> resolve; a CI não é afetada.</td></tr>
+        <tr data-k="warn"><td>3</td><td><code>job_name: triage-api</code> no Prometheus (resquício da Fase 3); checklist e README desatualizados</td><td><span class="badge b-warn">ATENÇÃO</span></td><td>Corrigir junto da F5/F6.</td></tr>
+<tr data-k="warn"><td>3</td><td>Jobs em lote não são alcançados pelo Prometheus (modelo pull); o Pushgateway não acumula contadores</td><td><span class="badge b-warn">ATENÇÃO</span></td><td>ADR D2/D5: Pushgateway com gauges do último estado; histórico no MLflow e no JSONL.</td></tr>
+        <tr data-k="warn"><td>2</td><td>O relatório compara período 1 × período 2; a referência de treino (<code>ref_data.csv</code>) não entra</td><td><span class="badge b-warn">ATENÇÃO</span></td><td>Adicionar <code>ref_data</code> × período 1 (esperado: sem drift); calibra os alertas.</td></tr>
+        <tr data-k="warn"><td>3</td><td>Limiar crítico de 10% não dispararia: PSI ≥ 0,25 em 7 de 114 features = 6,1%</td><td><span class="badge b-warn">ATENÇÃO</span></td><td>Revisto para 2% (aviso) e 5% (crítico); margem estreita, calibrar.</td></tr>
+        <tr data-k="soft"><td>3</td><td><code>mlflow</code> não está no <code>pyproject.toml</code>; <code>make drift</code>/<code>report</code> rodam no host</td><td><span class="badge b-soft">SOFT-BLOCK</span></td><td>Decidir entre grupo opcional no Poetry e serviço <code>drift</code> no compose.</td></tr>
+        <tr data-k="warn"><td>3</td><td>Compose: faltam <code>alerts.yml</code>/<code>rule_files</code>, volume <code>logs/</code>, <code>PUSHGATEWAY_URL</code>; <code>.gitignore</code> não cobre <code>logs/</code>; Pushgateway e Grafana sem proteção</td><td><span class="badge b-warn">ATENÇÃO</span></td><td>F2: portas em <code>127.0.0.1</code>.</td></tr>
+        <tr data-k="warn"><td>2</td><td>Gráficos de desempenho no período 2 (<code>reports/*.png</code>) não dizem que o alvo é sintético</td><td><span class="badge b-warn">ATENÇÃO</span></td><td>Rotular antes do vídeo.</td></tr>
+        <tr data-k="warn"><td>3</td><td>Sem teste que cruze regras de alerta, painéis e catálogo de métricas; sem cenários reproduzíveis para o vídeo</td><td><span class="badge b-warn">ATENÇÃO</span></td><td>Teste de coerência e <code>make demo-observability</code> (estável, driftado, lote inválido).</td></tr>
+        <tr data-k="warn"><td>2</td><td>HTML do Evidently versionado: confirmar que só tem agregados</td><td><span class="badge b-warn">ATENÇÃO</span></td><td>Checagem de privacidade antes da entrega.</td></tr>
+        <tr data-k="ok"><td>2</td><td>Simulação de drift, relatório Evidently, PSI/KS por feature</td><td><span class="badge b-ok">OK</span></td><td>Fonte dos resultados de drift que a Etapa 3 vai publicar.</td></tr>
+        <tr data-k="ok"><td>3</td><td>API com métricas Prometheus, dashboard Grafana, compose com MLflow</td><td><span class="badge b-ok">OK</span></td><td>Base reaproveitada; as 3 métricas originais não podem mudar.</td></tr>
+        <tr data-k="ok"><td>4</td><td>Governança (LGPD) e vídeo STAR pendentes</td><td><span class="badge b-ok">NÃO BLOQUEIA</span></td><td>Logs novos seguem a política de PII; o vídeo precisa dos alertas da Etapa 3.</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h3 style="margin-top:28px">Peso dos critérios de avaliação × situação</h3>
+    <p class="dim" style="font-size:.8rem">A barra mostra o peso do critério na nota; a cor, a situação atual.</p>
+    <div class="grid g3" style="margin-top:10px">
+      <div class="panel"><b>Validação de dados · 25%</b> <span class="badge b-block">BLOCK</span><div class="weight"><i style="width:25%;background:var(--bad)"></i></div><p class="dim" style="font-size:.8rem">Contrato + lote bloqueado + testes.</p></div>
+      <div class="panel"><b>Detecção de drift · 25%</b> <span class="badge b-ok">QUASE</span><div class="weight"><i style="width:25%;background:var(--good)"></i></div><p class="dim" style="font-size:.8rem">Falta a predição em lote e a comparação com a referência de treino.</p></div>
+      <div class="panel"><b>Observabilidade · 20%</b> <span class="badge b-soft">PARCIAL</span><div class="weight"><i style="width:20%;background:var(--soft)"></i></div><p class="dim" style="font-size:.8rem">Só a API; esta etapa.</p></div>
+      <div class="panel"><b>Governança LGPD · 15%</b> <span class="badge b-block">PENDENTE</span><div class="weight"><i style="width:15%;background:var(--bad)"></i></div><p class="dim" style="font-size:.8rem">Etapa 4.</p></div>
+      <div class="panel"><b>Vídeo STAR · 15%</b> <span class="badge b-block">PENDENTE</span><div class="weight"><i style="width:15%;background:var(--bad)"></i></div><p class="dim" style="font-size:.8rem">Depois das etapas 1 a 3.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>3 · O que a Etapa 3 vai publicar: drift real da Etapa 2</h2>
+    <p class="lede">130 features comparadas; <b>17</b> com drift em ao menos um método (KS ou PSI) e <b>7</b> por PSI ≥ 0,25. Este é o insumo das métricas <code>drift_feature_psi</code> e <code>drift_share</code>.</p>
+    <div class="panel">
+      <b>Top 10 features por PSI</b> <span class="dim" style="font-size:.8rem">(escala logarítmica; traço = limiar 0,25)</span>
+      <div class="bars" id="psi-bars"></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>4 · Arquitetura proposta</h2>
+    <div class="panel">
+    <svg viewBox="0 0 960 330" role="img" aria-label="Fluxo: etapas do pipeline emitem eventos; eventos alimentam Pushgateway, MLflow e JSONL; Prometheus e Grafana mostram painéis e alertas" width="100%">
+      <defs><marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="currentColor" style="color:var(--text-dim)"/></marker></defs>
+      <rect class="box" x="10" y="20" width="190" height="290" rx="10"/>
+      <text x="24" y="42" style="font-weight:700">Pipeline (jobs em lote)</text>
+      <g class="dim"><text x="24" y="70">ingestão + contrato</text><text x="24" y="98">transformação</text><text x="24" y="126">treino</text><text x="24" y="154">simulação de drift</text><text x="24" y="182">predição em lote*</text><text x="24" y="210">detecção de drift</text></g>
+      <text class="dim" x="24" y="290">*pré-requisito (F0)</text>
+      <rect class="new" x="250" y="110" width="200" height="90" rx="10"/>
+      <text x="268" y="136" style="font-weight:700">track_stage + eventos</text>
+      <text class="dim" x="268" y="156">run_id · status · duração</text>
+      <text class="dim" x="268" y="174">linhas · regra · alertas</text>
+      <text class="dim" x="268" y="192">sem ID, renda ou crédito</text>
+      <path class="arrow" d="M200 160 H250"/>
+      <rect class="box" x="510" y="22" width="180" height="56" rx="8"/><text x="526" y="46" style="font-weight:700">logs JSONL</text><text class="dim" x="526" y="64">logs/pipeline_events.jsonl</text>
+      <rect class="box" x="510" y="132" width="180" height="56" rx="8"/><text x="526" y="156" style="font-weight:700">Pushgateway</text><text class="dim" x="526" y="174">métricas pipeline_* e drift_*</text>
+      <rect class="box" x="510" y="242" width="180" height="56" rx="8"/><text x="526" y="266" style="font-weight:700">MLflow</text><text class="dim" x="526" y="284">1 run por etapa + HTML</text>
+      <path class="arrow new" d="M450 140 L510 56"/><path class="arrow new" d="M450 155 H510"/><path class="arrow new" d="M450 172 L510 266"/>
+      <rect class="box" x="750" y="100" width="190" height="64" rx="8"/><text x="766" y="124" style="font-weight:700">Prometheus</text><text class="dim" x="766" y="142">regras de alerta (alerts.yml)</text>
+      <rect class="box" x="750" y="200" width="190" height="64" rx="8"/><text x="766" y="224" style="font-weight:700">Grafana</text><text class="dim" x="766" y="242">pipeline-health + API</text>
+      <rect class="box" x="750" y="20" width="190" height="56" rx="8"/><text x="766" y="44" style="font-weight:700">API FastAPI</text><text class="dim" x="766" y="62">/metrics (já existe)</text>
+      <path class="arrow" d="M690 160 L750 135"/><path class="arrow" d="M845 76 V100"/><path class="arrow" d="M845 164 V200"/>
+    </svg>
+    <p class="dim" style="font-size:.8rem">Tracejado = componente novo. Uma única fonte de eventos alimenta os três destinos, o que evita números divergentes entre Grafana e MLflow.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>5 · Mockup do painel <code>pipeline-health</code></h2>
+    <div class="panel mock">
+      <span class="badge b-warn tag">ILUSTRATIVO · SEM DADOS REAIS</span>
+      <div class="grid g4" style="margin-top:6px">
+        <div class="tile"><h4>Última execução</h4><div class="stat" style="color:var(--good)">success<small>por etapa, com timestamp</small></div></div>
+        <div class="tile"><h4>Lotes bloqueados (1h)</h4><div class="stat" style="color:var(--bad)">1<small>regra: idade ≥ 18</small></div></div>
+        <div class="tile"><h4>Drift share (PSI)</h4><div class="stat" style="color:var(--bad)">≥ 5%<small>limiar crítico</small></div></div>
+        <div class="tile"><h4>Alertas ativos</h4><div class="stat">2<small>1 warning · 1 critical</small></div></div>
+      </div>
+      <div class="grid g3" style="margin-top:14px">
+        <div class="tile"><h4>Duração por etapa (s)</h4>
+          <svg class="spark" viewBox="0 0 200 46" preserveAspectRatio="none"><polyline points="0,34 25,30 50,32 75,22 100,26 125,18 150,24 175,20 200,22"/></svg></div>
+        <div class="tile"><h4>Linhas processadas</h4>
+          <svg class="spark" viewBox="0 0 200 46" preserveAspectRatio="none"><polyline points="0,28 40,28 80,28 120,28 160,28 200,28"/></svg></div>
+        <div class="tile"><h4>Score médio previsto: estável × driftado</h4>
+          <svg class="spark" viewBox="0 0 200 46" preserveAspectRatio="none"><polyline points="0,30 40,31 80,29 120,30"/><polyline class="alert" points="120,30 150,20 175,14 200,10"/></svg></div>
+      </div>
+    </div>
+    <h3 style="margin-top:24px">Alertas propostos (pontos de partida, a calibrar no período estável)</h3>
+    <div class="panel" style="padding:4px 8px">
+      <table>
+        <thead><tr><th>Alerta</th><th>Condição</th><th>Severidade</th></tr></thead>
+        <tbody>
+          <tr><td><code>ModelNotLoaded</code></td><td><code>credit_model_loaded == 0</code> por 1 min</td><td><span class="badge b-block">CRITICAL</span></td></tr>
+          <tr><td><code>HighErrorRate</code></td><td>5xx &gt; 5% por 2 min</td><td><span class="badge b-block">CRITICAL</span></td></tr>
+          <tr><td><code>PipelineStageFailed</code></td><td>última execução da etapa falhou (<code>pipeline_stage_last_status == 0</code>)</td><td><span class="badge b-block">CRITICAL</span></td></tr>
+          <tr><td><code>DataDriftSevere</code></td><td><code>drift_share{psi} ≥ 5%</code> (hoje: 6,1%, margem de 1 feature)</td><td><span class="badge b-block">CRITICAL</span></td></tr>
+          <tr><td><code>DataDriftDetected</code></td><td><code>drift_share{psi} ≥ 2%</code></td><td><span class="badge b-warn">WARNING</span></td></tr>
+          <tr><td><code>DataContractViolation</code></td><td>último lote barrado (<code>data_batch_blocked == 1</code>)</td><td><span class="badge b-warn">WARNING</span></td></tr>
+          <tr><td><code>HighInferenceLatency</code></td><td>p95 &gt; 0,5 s por 5 min</td><td><span class="badge b-warn">WARNING</span></td></tr>
+          <tr><td><code>PipelineStale</code></td><td>sem sucesso há mais de 24 h</td><td><span class="badge b-warn">WARNING</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>6 · Plano de implementação</h2>
+    <ol class="steps">
+      <li><div><b>Desbloqueio</b><span>Ambiente, CSV, predição em lote do período de produção, interface do contrato.</span></div></li>
+      <li><div><b>Eventos estruturados</b><span><code>events.py</code> e <code>track_stage</code>, com teste que proíbe PII no schema.</span></div></li>
+      <li><div><b>Métricas de pipeline</b><span>Pushgateway no compose e novo <code>scrape_config</code>.</span></div></li>
+      <li><div><b>Drift e alertas</b><span>PSI/KS viram métricas; <code>alerts.py</code> e seção <code>observability</code> no YAML.</span></div></li>
+      <li><div><b>MLflow</b><span>Um run por etapa, HTML do Evidently como artefato.</span></div></li>
+      <li><div><b>Dashboard e regras</b><span><code>pipeline-health</code> no Grafana e <code>alerts.yml</code>.</span></div></li>
+      <li><div><b>Documentação</b><span><code>docs/metricas_saude.md</code>, README, checklist, <code>make pipeline</code>.</span></div></li>
+      <li><div><b>Opcional: Loki</b><span>Centralização de logs em <em>profile</em> do compose, se sobrar tempo.</span></div></li>
+    </ol>
+
+    <h3 style="margin-top:24px">Critérios de aceite</h3>
+    <ul class="check">
+      <li><code>make pipeline</code> roda ponta a ponta e emite eventos por etapa.</li>
+      <li>Lote inválido é bloqueado e aparece como alerta.</li>
+      <li>Período estável não alerta; o driftado dispara <code>DataDriftDetected</code> e <code>DataDriftSevere</code>.</li>
+      <li>Grafana mostra pipeline, drift, alertas, score do modelo e saúde da API; MLflow lista os runs.</li>
+      <li>Nenhum log ou métrica contém ID, renda, crédito ou linha de cliente (teste automatizado).</li>
+      <li><code>make lint</code> e <code>make test</code> passam; <code>/health</code>, <code>/predict</code> e as 3 métricas originais intactos.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>7 · Decisões fechadas</h2>
+    <div class="grid g2">
+      <div class="panel"><b>Arquitetura <span class="badge b-ok">APROVADA</span></b><p class="dim">Prometheus/Grafana e MLflow, com Pushgateway para os jobs em lote.</p></div>
+      <div class="panel"><b>Loki <span class="badge b-warn">SÓ SE SOBRAR TEMPO</span></b><p class="dim">Fora do caminho crítico: dois serviços sem exigência no enunciado.</p></div>
+      <div class="panel"><b>Ordem <span class="badge b-ok">DECIDIDO</span></b><p class="dim">Etapa 1 completa antes de fechar a 3; F0 e F1 em paralelo.</p></div>
+      <div class="panel"><b>Commits fora do padrão <span class="badge b-ok">DECIDIDO</span></b><p class="dim">Não reescrever: já publicados e mesclados em PRs. Padrão obrigatório daqui para frente.</p></div>
+      <div class="panel"><b>MLflow no host <span class="badge b-ok">DECIDIDO</span></b><p class="dim">Serviço <code>drift</code> no compose, sem tocar no Poetry.</p></div>
+      <div class="panel"><b>Limiares e referência <span class="badge b-ok">DECIDIDO</span></b><p class="dim">Aviso 2% / crítico 5% de <code>drift_share</code>; incluir <code>ref_data</code> × período 1 e recalibrar.</p></div>
+    </div>
+  </section>
+
+  <footer>Documentos: <code>docs/adr/0001-observabilidade-pipeline-e-modelo.md</code> · <code>docs/etapa3-diagnostico-e-plano.md</code> · gerado em 2026-10-25.</footer>
+</main>
+<script>
+  const psi = [
+    ["CREDIT_GOODS_PERCENT", 9.2787, true], ["AGE_YEARS", 8.4114, true], ["DAYS_BIRTH", 8.4113, true],
+    ["EXT_SOURCE_2", 1.4380, true], ["EXT_SOURCES_MEAN", 0.7677, true], ["EXT_SOURCE_3", 0.6540, true],
+    ["CREDIT_TERM", 0.3260, true], ["EXT_SOURCE_1", 0.2307, false], ["EXT_SOURCES_PROD", 0.1981, false], ["AMT_CREDIT", 0.1565, false]
+  ];
+  const scale = v => Math.log10(1 + v * 10) / Math.log10(1 + 100);
+  document.getElementById("psi-bars").innerHTML = psi.map(([name, v, hit]) =>
+    `<div class="bar"><span>${name}</span><div class="track"><div class="fill ${hit ? "" : "low"}" style="width:${(scale(v) * 100).toFixed(1)}%"></div><div class="thr" style="left:${(scale(0.25) * 100).toFixed(1)}%"></div></div><span class="val">${v.toFixed(2)}</span></div>`
+  ).join("");
+  document.querySelectorAll(".filters button").forEach(btn => btn.addEventListener("click", () => {
+    document.querySelectorAll(".filters button").forEach(b => b.setAttribute("aria-pressed", String(b === btn)));
+    document.querySelectorAll("#blocks tbody tr").forEach(tr => { tr.hidden = btn.dataset.f !== "all" && tr.dataset.k !== btn.dataset.f; });
+  }));
+</script>
+</body>
+</html>

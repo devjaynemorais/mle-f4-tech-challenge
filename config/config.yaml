@@ -45,3 +45,26 @@ drift:
   alpha: 0.05
   psi_threshold: 0.25
   n_bins: 10
+  # Comparação de sanidade: referência de treino x período estável (sem drift).
+  baseline_report_html: reports/data_drift_reference_vs_stable.html
+  baseline_summary_csv: reports/data_drift_reference_vs_stable.csv
+  # Predições em lote dos períodos de produção (arquivos locais, fora do Git).
+  predictions_stable_file: predicoes_periodo1_estavel.csv
+  predictions_drifted_file: predicoes_periodo2_drift.csv
+  scoring_summary_file: metrics/batch_scoring_summary.json
+
+contract:
+  # Regras rígidas do contrato de dados (Pandera) aplicadas a cada lote.
+  min_age_years: 18
+  max_income_total: 1000000000
+
+observability:
+  # Eventos estruturados do pipeline (sem identificadores nem valores de clientes).
+  events_file: logs/pipeline_events.jsonl
+  events_max_bytes: 5000000
+  pushgateway_job: credit-pipeline
+  mlflow_experiment: credit-pipeline-monitoring
+  # Fração de features numéricas com PSI >= psi_threshold que gera alerta.
+  # Pontos de partida: recalibrar com a comparação referência x período estável.
+  drift_warning_share: 0.02
+  drift_critical_share: 0.05

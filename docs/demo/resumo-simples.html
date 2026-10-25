@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<title>Resumo Simples do Projeto</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root {
+    --ink: #0d1a1c; --paper: #e6ece9; --text: #16211f; --text-dim: #52625d;
+    --accent: #1f7a6c; --accent-wash: rgba(31, 122, 108, 0.08);
+    --good: #337a55; --bad: #a8433c; --warn: #b07a12;
+    --good-wash: rgba(51, 122, 85, 0.12); --bad-wash: rgba(168, 67, 60, 0.1); --warn-wash: rgba(176, 122, 18, 0.12);
+    --line: rgba(22, 33, 31, 0.14); --card: #ffffff;
+    color-scheme: light only;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #e6ece9; color: #16211f; font: 17px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; }
+  main { max-width: 860px; margin: 0 auto; padding: 0 20px 70px; }
+  h1, h2 { font-family: "Iowan Old Style", Charter, Georgia, serif; font-weight: 600; margin: 0 0 8px; }
+  h1 { font-size: 2rem; }
+  h2 { font-size: 1.35rem; margin-top: 44px; display: flex; align-items: center; gap: 10px; }
+  p { margin: 8px 0; }
+  .dim { color: var(--text-dim); }
+  code { font-family: ui-monospace, monospace; background: var(--line); padding: 1px 6px; border-radius: 3px; font-size: 0.86em; }
+  .hero { margin: 0 -20px; padding: 36px 20px 18px; background: linear-gradient(180deg, var(--accent-wash), transparent); border-radius: 0 0 20px 20px; }
+  .dot { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; }
+  .ok .dot { background: var(--good); } .todo .dot { background: var(--bad); } .block .dot { background: var(--warn); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 18px; margin: 10px 0; border-left-width: 5px; }
+  .ok .card { border-left-color: var(--good); } .todo .card { border-left-color: var(--bad); } .block .card { border-left-color: var(--warn); }
+  .card b { display: block; }
+  .card span { color: var(--text-dim); font-size: 0.92rem; }
+  .pill { display: inline-block; font: 700 0.72rem ui-monospace, monospace; padding: 2px 10px; border-radius: 999px; margin-left: auto; }
+  .ok .pill { color: var(--good); background: var(--good-wash); }
+  .todo .pill { color: var(--bad); background: var(--bad-wash); }
+  .block .pill { color: var(--warn); background: var(--warn-wash); }
+  ul { padding-left: 22px; margin: 6px 0; }
+  li { margin: 4px 0; }
+  .next { border: 2px solid var(--accent); background: var(--accent-wash); border-radius: 10px; padding: 16px 20px; margin-top: 12px; }
+  footer { margin-top: 48px; font-size: 0.8rem; color: var(--text-dim); border-top: 1px solid var(--line); padding-top: 14px; }
+</style>
+</head>
+<body>
+<main>
+  <header class="hero">
+    <h1>Resumo simples do projeto</h1>
+    <p class="dim">Tech Challenge Fase 4 · o que já está pronto e o que falta. Atualizado em 25/10/2026, depois da execução com o CSV real. Detalhes em <code>relatorio-etapa3.html</code>.</p>
+  </header>
+
+  <section class="ok">
+    <h2><span class="dot"></span> Já está pronto <span class="pill">FEITO</span></h2>
+    <div class="card"><b>Contrato de dados (Etapa 1)</b><span>Regras de qualidade barram dados ruins antes do modelo: ID sem repetição, alvo 0 ou 1, renda e crédito válidos, idade acima de 18 anos, tipos e colunas. Um lote com erros é bloqueado e nada é treinado. O CSV real passou sem falso alarme.</span></div>
+    <div class="card"><b>Treino do modelo com o dado real</b><span>307.511 clientes. O XGBoost chegou a AUC 0,762 e a regressão logística a 0,748 (validação cruzada).</span></div>
+    <div class="card"><b>Simulação e detecção de drift (Etapa 2)</b><span>Os dados de produção foram alterados de propósito. Relatórios do Evidently e tabela PSI/KS prontos. Novo: comparação da referência do treino com o período estável, que deu 0% de drift.</span></div>
+    <div class="card"><b>Predições em lote</b><span>O modelo pontua os dois períodos de produção. No período estável a AUC foi 0,763; no driftado, 47% foram previstos como default contra 31%.</span></div>
+    <div class="card"><b>Observabilidade (Etapa 3)</b><span>Logs de cada etapa sem dados pessoais, métricas de saúde, 8 alertas, painel novo no Grafana e uma execução registrada no MLflow por etapa. Com o dado real, o drift gerou o alerta crítico e o lote inválido gerou o alerta de contrato.</span></div>
+    <div class="card"><b>Testes e validação</b><span>144 testes passando (eram 77), 92% do código coberto. As regras de alerta foram aprovadas pelo <code>promtool</code> e a stack inteira foi validada no Docker.</span></div>
+    <div class="card"><b>Código no GitHub</b><span>Tudo está no branch <code>feat/etapa3-observabilidade</code>, com 13 commits semânticos. A <code>main</code> não foi alterada.</span></div>
+  </section>
+
+  <section class="todo">
+    <h2><span class="dot"></span> Falta fazer <span class="pill">PENDENTE</span></h2>
+    <div class="card"><b>Etapa 4 · vale 15%</b>
+      <ul><li>Escrever a parte de LGPD no README: dados pessoais, base legal, retenção e análise causal.</li>
+      <li>Incluir a mitigação de vieses.</li></ul></div>
+    <div class="card"><b>Vídeo STAR · vale 15%</b>
+      <ul><li>Roteiro e gravação de 5 minutos. Os comandos para mostrar "sem alerta" e "alertas gerados" já existem (<code>make demo-observability</code>).</li></ul></div>
+    <div class="card"><b>Pull request</b>
+      <ul><li>Abrir o PR do branch <code>feat/etapa3-observabilidade</code> para a <code>main</code>.</li></ul></div>
+  </section>
+
+  <section class="block">
+    <h2><span class="dot"></span> Pontos de atenção <span class="pill">ATENÇÃO</span></h2>
+    <div class="card"><b>Margem do alerta crítico é pequena</b><span>O limiar é 5% das features (6); o cenário driftado tem 7 (6,14%). Se a simulação mudar, reavalie.</span></div>
+    <div class="card"><b>Alertas sem notificação</b><span>Aparecem no Prometheus e no Grafana, mas não chegam por e-mail ou Slack.</span></div>
+    <div class="card"><b>Commits antigos fora do padrão</b><span>7 commits antigos não seguem o formato <code>tipo(escopo)</code>. Decidimos não reescrever; os novos seguem o padrão.</span></div>
+    <div class="card"><b>Uso local</b><span>O Grafana usa acesso anônimo e senha padrão. Depois da demo do lote inválido, o alerta fica ativo até <code>make metrics-reset</code>.</span></div>
+    <div class="card"><b>Dados e modelo ficam só no seu computador</b><span>O CSV, o modelo treinado, o <code>.env</code> e os logs estão fora do Git, de propósito.</span></div>
+  </section>
+
+  <section>
+    <h2>Próximo passo sugerido</h2>
+    <div class="next">Abrir o PR da Etapa 3, escrever a Etapa 4 (LGPD) no README usando a trilha de logs e alertas como evidência e, por último, gravar o vídeo.</div>
+  </section>
+
+  <footer>Arquivo: <code>docs/demo/resumo-simples.html</code></footer>
+</main>
+</body>
+</html>

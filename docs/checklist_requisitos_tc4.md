@@ -6,9 +6,9 @@ Fonte: [MLET - Tech Challenge - Fase 4.pdf](MLET%20-%20Tech%20Challenge%20-%20Fa
 
 | Requisito | Status | Evidência |
 |-----------|--------|-----------|
-| Pipeline de validação de dados (data contracts) configurado | Pendente (Etapa 1) | `src/data/contracts.py` |
+| Pipeline de validação de dados (data contracts) configurado | Implementado: contrato Pandera com 5 colunas e regras rígidas, barrando lotes na ingestão | `src/data/contracts.py`, `src/data/ingestion.py` |
 | Scripts para simulação e detecção estatística de drift | Implementado: detecção por feature e resumo CSV com `make report` | `src/drift/`, `reports/data_drift_summary.csv` |
-| Dashboards ou relatórios HTML comprovando o monitoramento | Implementado: dashboard Grafana e relatório Evidently via `make report` | `monitoring/grafana/`, `reports/data_drift_report.html` |
+| Dashboards ou relatórios HTML comprovando o monitoramento | Implementado: dashboards Grafana (API e pipeline), alertas Prometheus e relatórios Evidently | `monitoring/`, `reports/data_drift_report.html` |
 | Documentação consolidada de Governança no README.md | Pendente (Etapa 4) | `README.md`, seção "Governança e LGPD" |
 | Histórico de commits semântico e organizado | Em andamento | `git log` |
 
@@ -17,21 +17,22 @@ Fonte: [MLET - Tech Challenge - Fase 4.pdf](MLET%20-%20Tech%20Challenge%20-%20Fa
 | Prática | Status |
 |---------|--------|
 | Separação entre dataset de referência (treino) e de produção (drift) | Implementada em `make train` e `make drift`; arquivos locais fora do Git |
-| Pelo menos 3 regras rígidas de qualidade de dados | Pendente (Etapa 1) |
+| Pelo menos 3 regras rígidas de qualidade de dados | Implementada: 6 regras de negócio nomeadas (ID único, alvo binário, renda positiva, teto de renda, crédito positivo, idade mínima), mais checagens de nulos, tipo e colunas obrigatórias |
 | Relatório estatístico da mudança de distribuição (PSI ou KS) | Implementado; CSV gerado por `make report` |
 | Documentação de compliance com plano de privacidade (LGPD) | Pendente (Etapa 4) |
 
 ## Etapas de desenvolvimento
 
 ### Etapa 1 — Validação de dados e contratos
-- [ ] Treinar classificador base com dataset limpo de referência (o treino atual usa o CSV bruto)
-- [ ] Criar contrato de dados (Pandera ou Great Expectations) com regras estritas
-- [ ] Forçar a passagem de um lote com erros e demonstrar o bloqueio da ingestão
+- [x] Treinar classificador base com dataset limpo de referência (o contrato barra o lote antes do treino)
+- [x] Criar contrato de dados (Pandera) com regras estritas
+- [x] Forçar a passagem de um lote com erros e demonstrar o bloqueio da ingestão (`make contract-demo`)
 - [x] Base de leitura do CSV bruto com validação de colunas obrigatórias
 
 ### Etapa 2 — Simulação e detecção de drift
 - [x] Criar dataset de produção com alteração intencional de ao menos duas variáveis
-- [ ] Gerar predições para o dataset de produção
+- [x] Gerar predições para o dataset de produção (`make predict`)
+- [x] Comparar também a referência de treino com o período estável (sanidade, sem drift esperado)
 - [x] Usar Evidently AI para comparar o período estável e o driftado (`make report`)
 - [x] Identificar, com PSI/KS, quais features sofreram drift no CSV resumo
 - [x] Entregável: relatório HTML do Evidently gerado em `reports/`
@@ -39,12 +40,13 @@ Fonte: [MLET - Tech Challenge - Fase 4.pdf](MLET%20-%20Tech%20Challenge%20-%20Fa
 O relatório compara distribuições de features (`P(X)`) e exclui `SK_ID_CURR`
 e `TARGET`; o segundo período usa alvo sintético, que não é avaliado como
 desempenho observado em produção. A geração de predições por lote continua
-pendente.
+implementada em `make predict`.
 
 ### Etapa 3 — Observabilidade de pipelines e modelos
-- [ ] Centralizar logs de execução do pipeline e resultados dos testes de drift
-- [ ] Rastreamento com MLflow ou exportação de métricas para dashboard
-- [ ] Documentar métricas de saúde (status de execução, latência, volume, alertas)
+- [x] Centralizar logs de execução do pipeline e resultados dos testes de drift (eventos JSONL com `run_id`)
+- [x] Rastreamento com MLflow (uma run por etapa) e exportação de métricas ao Prometheus/Grafana
+- [x] Documentar métricas de saúde (status de execução, latência, volume, alertas) em `docs/metricas_saude.md`
+- [x] Regras de alerta de falha de etapa, lote barrado e drift
 - [x] API com métricas Prometheus e dashboard Grafana provisionado
 - [x] Serviços de Prometheus, Grafana e MLflow no Docker Compose
 

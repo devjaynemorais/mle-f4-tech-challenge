@@ -10,9 +10,10 @@ camada de sustentação e confiabilidade ao redor de um modelo base: contratos
 de dados, simulação e detecção de drift, monitoramento e documentação de
 governança/LGPD.
 
-> **Status:** infraestrutura, treino base, simulação e relatório de detecção
-> de drift implementados. Contratos completos e governança ainda estão pendentes;
-> a geração de predições por lote também permanece pendente.
+> **Status:** contrato de dados, treino base, simulação e detecção de drift,
+> predições em lote e observabilidade de pipeline e modelo (métricas, logs,
+> alertas e dashboards) implementados. A governança (LGPD) e o vídeo STAR
+> (Etapa 4) continuam pendentes.
 
 ## Dataset
 
@@ -85,9 +86,9 @@ O contrato exato de entrada será definido pelo schema de dados da Etapa 1.
 
 | Etapa | Disciplina | Status | Onde fica |
 |-------|------------|--------|-----------|
-| 1. Validação de dados e contratos | Validação de Dados | Treino base pronto; contratos pendentes | `src/data/`, `src/models/` |
-| 2. Simulação e detecção de drift | Data Drift | Simulação e relatório prontos; predições por lote pendentes | `src/drift/`, `reports/` |
-| 3. Observabilidade de pipelines e modelos | Monitoramento de Pipelines e Infraestrutura | Infra pronta; métricas de pipeline a implementar | `src/observability/`, `monitoring/`, `src/serving/metrics.py` |
+| 1. Validação de dados e contratos | Validação de Dados | Contrato Pandera e treino base prontos | `src/data/`, `src/models/` |
+| 2. Simulação e detecção de drift | Data Drift | Simulação, relatórios e predições por lote prontos | `src/drift/`, `reports/` |
+| 3. Observabilidade de pipelines e modelos | Monitoramento de Pipelines e Infraestrutura | Métricas, logs, alertas e dashboards prontos | `src/observability/`, `monitoring/`, `src/serving/metrics.py` |
 | 4. Governança (LGPD) e causalidade | Privacy by Design e by Default | Seção abaixo a preencher | este README |
 
 O checklist completo do enunciado está em
@@ -111,15 +112,23 @@ nas estatísticas de drift.
 
 ### Contratos de dados (Etapa 1)
 
-A regra é que lotes com erros sejam bloqueados antes de chegar ao modelo.
-O preparo do treino já rejeita `TARGET` fora de 0/1 ou ausente e IDs duplicados
-ou ausentes. Os contratos Pandera completos ainda estão pendentes. Regras
-previstas (mínimo de três, exigidas pelo enunciado):
+`src/data/contracts.py` define o contrato Pandera aplicado a cada lote antes
+do modelo. Um lote que viola qualquer regra é **barrado** (`DataContractError`):
+nada é treinado nem pontuado, e o evento fica registrado.
 
-- `TARGET` binário e sem nulos;
-- identificador `SK_ID_CURR` sem duplicatas;
-- idade do cliente (`DAYS_BIRTH`) implicando maioridade (> 18 anos);
-- renda total (`AMT_INCOME_TOTAL`) positiva e não nula.
+| Regra | Coluna |
+|-------|--------|
+| Identificador obrigatório e sem duplicatas | `SK_ID_CURR` |
+| Alvo obrigatório e binário (0 ou 1) | `TARGET` |
+| Renda obrigatória, positiva e abaixo de um teto (`contract.max_income_total`) | `AMT_INCOME_TOTAL` |
+| Crédito obrigatório e positivo | `AMT_CREDIT` |
+| Idade acima do mínimo (`contract.min_age_years`, padrão 18) | `DAYS_BIRTH` |
+
+O resultado guarda só nomes de regras e contagens de linhas; valores e
+identificadores nunca aparecem em mensagens, eventos ou métricas. O contrato é
+aplicado ao CSV bruto no treino e a cada período de produção na predição em
+lote. Para ver um lote válido passar e um com erros ser barrado, sem precisar
+do CSV: `make contract-demo`.
 
 ### Drift (Etapa 2)
 
@@ -162,11 +171,65 @@ do período 2 é sintético. Os artefatos ficam em `reports/`:
 - `data_drift_summary.csv`: resultados por feature, com KS e PSI para colunas
   numéricas e qui-quadrado para categóricas, estatística, limiar e decisão.
 
+> **Aviso sobre os gráficos `reports/xgboost_*_prod1_vs_prod2.png`.** Eles vêm
+> do notebook de avaliação e comparam desempenho no período 2 usando o alvo
+> **sintético**. Descrevem a regra de simulação, não desempenho real em
+> produção.
+
+`make report` também gera a comparação de sanidade **referência de treino ×
+período 1 estável** (`reports/data_drift_reference_vs_stable.*`), que não deve
+indicar drift e serve de linha de base para calibrar os alertas.
+
 O resumo CSV não inclui linhas de clientes, IDs ou valores individuais. Essa
 comparação identifica mudança nas distribuições de entrada (`P(X)`); não
 avalia desempenho nem comprova degradação do modelo. O `TARGET` sintético não
 entra na análise. Caminhos e parâmetros padrão podem ser ajustados em
 `config/config.yaml`.
+
+### Predições em lote (Etapa 2)
+
+`make predict` (depois de `make train` e `make drift`) pontua o período estável
+e o driftado com o mesmo modelo da API, grava as predições em
+`data/processed/` (fora do Git) e um resumo agregado em
+`metrics/batch_scoring_summary.json`. Só o período estável publica AUC: o alvo
+do período driftado é sintético e não é tratado como desempenho real.
+
+## Observabilidade de pipelines e modelos (Etapa 3)
+
+Decisão de arquitetura: [docs/adr/0001](docs/adr/0001-observabilidade-pipeline-e-modelo.md).
+Catálogo de métricas, alertas e operação: [docs/metricas_saude.md](docs/metricas_saude.md).
+
+```text
+etapas do pipeline ──► eventos JSONL (logs/) + Pushgateway ──► Prometheus ──► Grafana + alertas
+                   └──► MLflow (uma run por etapa, com o HTML do Evidently)
+API FastAPI ──────────► /metrics ──► Prometheus
+```
+
+- **Logs centralizados:** cada etapa (ingestão, contrato, transformação,
+  treino, predição, drift) emite eventos estruturados sem dados pessoais, com
+  um `run_id` por execução.
+- **Métricas de saúde:** status, duração, volume, lotes barrados, drift por
+  feature, score do modelo e alertas, além das métricas da API.
+- **Alertas:** regras Prometheus versionadas em `monitoring/prometheus/alerts.yml`
+  (falha de etapa, lote barrado, drift moderado e severo, modelo fora do ar,
+  erro e latência da API).
+- **Dashboards:** "Credit Pipeline — Saúde, Drift e Alertas" e "Credit Scoring
+  API — Overview" no Grafana (`http://localhost:3000`).
+
+```bash
+docker compose up -d --build     # API, Prometheus, Grafana, MLflow, Pushgateway
+make compose-pipeline            # treino + drift + predição + relatórios nos containers
+make demo-observability          # cenários: estável (sem alerta), driftado, lote inválido
+```
+
+Execução de referência com o dado real (307.511 linhas): contrato aceitou o
+arquivo; AUC de validação cruzada 0,762 (XGBoost); referência × estável sem
+drift (`drift_share` 0%); estável × driftado com 7 de 114 features em PSI ≥ 0,25
+(6,14%), o que dispara o alerta crítico `DataDriftSevere`.
+
+Sem Docker, rode `PUSHGATEWAY_URL=http://localhost:9091 make pipeline`
+(executa tudo sob um único `run_id`). Sem `PUSHGATEWAY_URL` ou
+`MLFLOW_TRACKING_URI`, o pipeline funciona normalmente e só grava os eventos.
 
 ## Governança e LGPD (Etapa 4)
 
@@ -230,14 +293,15 @@ arquitetural (`tests/test_source_function_length.py`) rejeita funções de
 config/config.yaml        configuração tipada do experimento
 data/raw/                 CSV Home Credit (fora do Git)
 data/processed/           referência e produção (Etapas 1 e 2)
-src/data/                 leitura do bruto e contratos Pandera (Etapa 1)
+src/data/                 leitura do bruto, contrato Pandera e porta de ingestão (Etapa 1)
 src/models/               orquestração, features, avaliação e artefatos do treino
 src/drift/                simulação e detecção de drift (Etapa 2)
-src/observability/        logs e métricas do pipeline (Etapa 3)
+src/observability/        eventos, métricas, alertas e runs MLflow do pipeline (Etapa 3)
 src/serving/              API FastAPI, schemas, métricas Prometheus
-monitoring/               Prometheus e dashboard Grafana versionado
+monitoring/               Prometheus (regras de alerta) e dashboards Grafana versionados
 docs/                     enunciado, arquitetura e checklist
 reports/                  relatórios HTML (Evidently) — versionados como evidência
+logs/                     eventos do pipeline (JSONL, fora do Git)
 tests/                    testes de unidade, serving e arquitetura
 ```
 

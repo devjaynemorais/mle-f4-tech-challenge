@@ -35,27 +35,73 @@ services:
     command: ["python", "-m", "src.models.train"]
     environment:
       MLFLOW_TRACKING_URI: http://mlflow:5000
+      PUSHGATEWAY_URL: http://pushgateway:9091
     volumes:
       - ./data/raw:/app/data/raw:ro
       - ./data/processed:/app/data/processed
       - ./models:/app/models
       - ./metrics:/app/metrics
+      - ./logs:/app/logs
     depends_on:
       - mlflow
+      - pushgateway
     networks:
       - ml-network
 
+  # Simulação de drift, predição em lote e relatórios (Etapas 2 e 3). Roda sob
+  # demanda, depois do treino, na imagem do treino (que tem MLflow):
+  #   docker compose run --rm drift
+  drift:
+    build:
+      context: .
+      target: train
+    image: mle-f4-tech-challenge-train
+    profiles: ["train"]
+    command:
+      - sh
+      - -c
+      - >
+        export PIPELINE_RUN_ID=$${PIPELINE_RUN_ID:-$$(python -c 'import uuid;print(uuid.uuid4().hex[:12])')} &&
+        python -m src.drift.data_drift_simulation &&
+        python -m src.drift.predict_batch &&
+        python -m src.drift.report
+    environment:
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      PUSHGATEWAY_URL: http://pushgateway:9091
+    volumes:
+      - ./data/processed:/app/data/processed
+      - ./models:/app/models:ro
+      - ./metrics:/app/metrics
+      - ./reports:/app/reports
+      - ./logs:/app/logs
+    depends_on:
+      - mlflow
+      - pushgateway
+    networks:
+      - ml-network
+
+  # O servidor recebe os artefatos (HTML do Evidently, modelos) por proxy e os
+  # guarda em ./mlflow-data/artifacts; os jobs não precisam montar essa pasta.
   mlflow:
     image: ghcr.io/mlflow/mlflow:v2.16.0
     entrypoint: ["mlflow"]
     command: >
       server --host 0.0.0.0 --port 5000
       --backend-store-uri sqlite:///mlflow-data/mlflow.db
-      --default-artifact-root /mlflow-data/artifacts
+      --artifacts-destination /mlflow-data/artifacts
     ports:
       - "${MLFLOW_PORT:-5000}:5000"
     volumes:
       - ./mlflow-data:/mlflow-data
+    networks:
+      - ml-network
+
+  # Recebe as métricas dos jobs em lote (treino, drift, predição). Sem
+  # autenticação: publicado só em 127.0.0.1.
+  pushgateway:
+    image: prom/pushgateway:v1.9.0
+    ports:
+      - "127.0.0.1:${PUSHGATEWAY_PORT:-9091}:9091"
     networks:
       - ml-network
 
@@ -65,10 +111,12 @@ services:
       - "${PROMETHEUS_PORT:-9090}:9090"
     volumes:
       - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
     networks:
       - ml-network
     depends_on:
       - api
+      - pushgateway
 
   grafana:
     image: grafana/grafana:11.1.0

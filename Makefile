@@ -1,4 +1,4 @@
-.PHONY: first rebuild env install lint format test test-cov dataset train drift report api compose-build compose-up compose-down
+.PHONY: first rebuild env install lint format test test-cov dataset train drift predict report pipeline contract-demo demo-observability metrics-reset api compose-build compose-up compose-down compose-pipeline
 
 # `poetry` nem sempre está no PATH (ex.: Windows Store Python instala o script
 # de entrada numa pasta de usuário que não entra no PATH automaticamente).
@@ -62,9 +62,35 @@ DRIFT_ARGS ?=
 drift:
 	$(POETRY) run python -m src.drift.data_drift_simulation $(DRIFT_ARGS)
 
-# Compara os dois períodos já gerados; execute `make drift` antes.
+# Pontua os períodos estável e driftado com o modelo treinado; após `make drift`.
+predict:
+	$(POETRY) run python -m src.drift.predict_batch
+
+# Gera os relatórios de drift (referência x estável e estável x driftado);
+# execute `make drift` antes.
 report:
 	$(POETRY) run python -m src.drift.report
+
+# ─── Observabilidade (Etapa 3) ──────────────────────────────────────────────────
+
+# Pipeline completo sob um único run_id: treino (ingestão, contrato,
+# transformação), drift, predição em lote e relatórios. Para enviar métricas ao
+# Pushgateway do compose: PUSHGATEWAY_URL=http://localhost:9091 make pipeline
+pipeline:
+	$(POETRY) run python -m src.pipeline
+
+# Mostra um lote válido passando e um lote com erros sendo barrado.
+contract-demo:
+	$(POETRY) run python -m src.data.contract_demo
+
+# Cenários para a demonstração: stable | drift | invalid | all (padrão).
+DEMO_ARGS ?=
+demo-observability:
+	$(POETRY) run python -m src.observability.demo $(DEMO_ARGS)
+
+# Zera as métricas de jobs guardadas pelo Pushgateway (ele só guarda em memória).
+metrics-reset:
+	docker compose restart pushgateway
 
 # ─── Serviço local ──────────────────────────────────────────────────────────────
 
@@ -88,3 +114,10 @@ compose-up:
 
 compose-down:
 	docker compose down
+
+# Treino e depois drift/predição/relatórios dentro dos containers, enviando
+# métricas ao Pushgateway e runs ao MLflow. Requer `docker compose up -d` antes.
+RUN_ID := $(shell python -c "import uuid;print(uuid.uuid4().hex[:12])")
+compose-pipeline:
+	docker compose run --rm --build -e PIPELINE_RUN_ID=$(RUN_ID) train
+	docker compose run --rm -e PIPELINE_RUN_ID=$(RUN_ID) drift

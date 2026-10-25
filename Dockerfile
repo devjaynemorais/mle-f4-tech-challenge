@@ -40,6 +40,8 @@ CMD ["uvicorn", "src.serving.api:app", "--host", "0.0.0.0", "--port", "8000"]
 # Mantém a imagem de serviço enxuta (sem mlflow) e evita mexer no poetry.lock.
 FROM api AS train
 
+ENV GIT_PYTHON_REFRESH=quiet
+
 RUN pip install --no-cache-dir "mlflow>=2.16,<3"
 
 CMD ["python", "-m", "src.models.train"]

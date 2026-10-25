@@ -6,7 +6,7 @@
 data/raw/application_train.csv  (Home Credit, fora do Git)
         │
         ▼
-src/data/loader.py ──► src/data/contracts.py      Etapa 1: contrato Pandera pendente
+src/data/loader.py ──► src/data/ingestion.py      contrato Pandera: barra lotes inválidos
         │
         ▼
 src/data/processed.py  (split estratificado 80/20)
@@ -76,3 +76,18 @@ src/data/processed.py  (split estratificado 80/20)
   vão para o Prometheus, para o MLflow ou para um arquivo consumido pelo Grafana.
 - MLflow registra o treino de forma opcional; falta definir o rastreamento das
   execuções de contratos e drift da Etapa 3.
+
+
+## Observabilidade (Etapa 3)
+
+```text
+etapas (ingestão, contrato, transformação, treino, predição, drift)
+        │  track_stage (src/observability/stage_tracking.py)
+        ├──► logs/pipeline_events.jsonl        eventos sem dados pessoais, com run_id
+        ├──► Pushgateway ──► Prometheus ──► alertas (alerts.yml) ──► Grafana
+        └──► MLflow                            uma run por etapa + HTML do Evidently
+src/serving/ ──► /metrics ──► Prometheus
+```
+
+Detalhes e justificativas na [ADR 0001](adr/0001-observabilidade-pipeline-e-modelo.md);
+métricas, rótulos e alertas em [metricas_saude.md](metricas_saude.md).
