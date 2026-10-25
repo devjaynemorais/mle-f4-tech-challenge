@@ -48,6 +48,9 @@ cover/
 logs/
 *.jsonl
 
+# Relatório Evidently da comparação de sanidade (10 MB, regenerável com make report)
+reports/data_drift_reference_vs_stable.html
+
 # Jupyter Notebook
 .ipynb_checkpoints
 

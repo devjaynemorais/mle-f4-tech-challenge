@@ -117,6 +117,7 @@ compose-down:
 
 # Treino e depois drift/predição/relatórios dentro dos containers, enviando
 # métricas ao Pushgateway e runs ao MLflow. Requer `docker compose up -d` antes.
+RUN_ID := $(shell python -c "import uuid;print(uuid.uuid4().hex[:12])")
 compose-pipeline:
-	docker compose run --rm --build train
-	docker compose run --rm drift
+	docker compose run --rm --build -e PIPELINE_RUN_ID=$(RUN_ID) train
+	docker compose run --rm -e PIPELINE_RUN_ID=$(RUN_ID) drift

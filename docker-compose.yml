@@ -61,6 +61,7 @@ services:
       - sh
       - -c
       - >
+        export PIPELINE_RUN_ID=$${PIPELINE_RUN_ID:-$$(python -c 'import uuid;print(uuid.uuid4().hex[:12])')} &&
         python -m src.drift.data_drift_simulation &&
         python -m src.drift.predict_batch &&
         python -m src.drift.report
