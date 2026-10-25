@@ -18,8 +18,9 @@ mapeamento de requisitos está em `docs/checklist_requisitos_tc4.md`.
 - `config/config.yaml`: colunas, caminhos, limiar e artefatos do experimento.
 - `.env.example`: configuração de runtime (paths, portas, senhas locais).
 - `src/data/`: leitura do CSV bruto e, na Etapa 1, contratos Pandera.
-- `src/models/`: treino do modelo base (Etapa 1, ainda stub).
-- `src/drift/`: simulação e detecção de drift (Etapa 2, ainda stub).
+- `src/models/`: treino do modelo base (Etapa 1).
+- `src/drift/data_drift_simulation.py`: gera os dois períodos simulados; detecção
+  estatística ainda pendente em `src/drift/detect.py`.
 - `src/observability/`: logs e métricas do pipeline (Etapa 3, ainda stub).
 - `src/serving/`: API FastAPI, schemas, métricas Prometheus e carregamento do modelo.
 - `monitoring/`: Prometheus e dashboard Grafana versionado.
@@ -36,8 +37,15 @@ mapeamento de requisitos está em `docs/checklist_requisitos_tc4.md`.
 - Colunas obrigatórias: `SK_ID_CURR` (identificador) e `TARGET` (alvo binário:
   1 = dificuldade de pagamento, 0 = adimplente). Os nomes ficam em
   `config/config.yaml`.
-- Referência (treino) e produção (drift) são arquivos separados. O treino nunca
-  lê o arquivo de produção.
+- `make train` grava `ref_data.csv` e `prod_data.csv` em `data/processed/`, ambos
+  com `TARGET` real. O treino usa apenas a referência para ajuste e seleção.
+- `make drift` lê `prod_data.csv` e grava `prod_periodo1_estavel.csv` com
+  `TARGET` original, `prod_periodo2_drift.csv` com `TARGET` sintético dependente
+  das features e `data_drift_simulation_manifest.json`. Os CSVs têm o mesmo
+  esquema; os IDs sintéticos usam faixa iniciada em 1 bilhão para não coincidir
+  com a referência Home Credit. As saídas permanecem fora do Git.
+- O `TARGET` sintético serve apenas para avaliação da hipótese simulada; não
+  representa inadimplência observada nem desempenho real de produção.
 - Não exponha identificadores, valores de renda ou crédito em logs, mensagens de
   erro ou exemplos commitados.
 
@@ -74,6 +82,8 @@ nomes. Se mudar uma métrica, atualize o dashboard e os testes juntos.
 ```bash
 make install
 make dataset     # resumo do CSV bruto
+make train       # referência, produção-base e artefato do modelo
+make drift       # períodos de produção estável e driftada
 make lint
 make test
 make test-cov
@@ -90,6 +100,8 @@ No Windows, se `poetry` não estiver no PATH, use o padrão do `Makefile`
 
 - Documentação apenas: revise links, caminhos e aderência ao enunciado.
 - Código Python: `make lint` e `make test`.
+- Simulação: depois dos testes, rode `make train` e então `make drift`; confira
+  esquema, contagens, IDs, distribuições e prevalências registradas no manifesto.
 - API: rode testes e confira `/health`, `/predict`, `/metrics` e `/docs`.
 - Docker: `make compose-build`; quando possível, `make compose-up`.
 

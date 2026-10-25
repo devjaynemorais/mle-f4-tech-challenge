@@ -35,16 +35,17 @@ class ModelConfig(BaseModel):
     """Parâmetros de decisão e de treino do modelo de crédito."""
 
     prediction_threshold: float = Field(gt=0, lt=1)
-    test_size: float = Field(default=0.2, gt=0, lt=1)
-    sample_size: int | None = Field(default=None, gt=0)
+    production_size: float = Field(default=0.2, gt=0, lt=1)
+    cv_folds: int = Field(default=5, ge=2)
     random_state: int = 42
 
 
 class ArtifactConfig(BaseModel):
-    """Diretório e nome do pipeline treinado servido pela API."""
+    """Diretório e nomes dos pipelines persistidos pelo treino."""
 
     model_path: Path
     model_file: str
+    baseline_file: str = "logistic_baseline.joblib"
 
 
 class MlflowConfig(BaseModel):
@@ -52,6 +53,19 @@ class MlflowConfig(BaseModel):
 
     tracking_uri: str = "http://localhost:5000"
     experiment: str = "credit-scoring"
+
+
+class DriftConfig(BaseModel):
+    """Arquivos e limiares para simulação e detecção de drift."""
+
+    stable_file: str = "prod_periodo1_estavel.csv"
+    drifted_file: str = "prod_periodo2_drift.csv"
+    manifest_file: str = "data_drift_simulation_manifest.json"
+    report_html: Path = Path("reports/data_drift_report.html")
+    summary_csv: Path = Path("reports/data_drift_summary.csv")
+    alpha: float = Field(default=0.05, gt=0, lt=1)
+    psi_threshold: float = Field(default=0.25, gt=0)
+    n_bins: int = Field(default=10, ge=2)
 
 
 class ExperimentConfig(BaseModel):
@@ -62,6 +76,7 @@ class ExperimentConfig(BaseModel):
     model: ModelConfig
     artifacts: ArtifactConfig
     mlflow: MlflowConfig = MlflowConfig()
+    drift: DriftConfig = DriftConfig()
 
 
 @lru_cache(maxsize=8)

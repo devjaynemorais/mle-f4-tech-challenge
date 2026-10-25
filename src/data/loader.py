@@ -24,10 +24,13 @@ def raw_dataset_path(config: ExperimentConfig | None = None) -> Path:
     return PROJECT_ROOT / data.raw_path / data.raw_file
 
 
-def load_raw_dataset(path: Path | None = None) -> pd.DataFrame:
+def load_raw_dataset(
+    path: Path | None = None, config: ExperimentConfig | None = None
+) -> pd.DataFrame:
     """Lê o CSV bruto e confirma as colunas de identificador e alvo."""
-    data = load_config().data
-    source = path or raw_dataset_path()
+    cfg = config or load_config()
+    data = cfg.data
+    source = path or raw_dataset_path(cfg)
     if not source.exists():
         raise FileNotFoundError(
             f"Dataset não encontrado em {source}. Baixe o application_train.csv "
