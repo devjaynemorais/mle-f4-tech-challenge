@@ -52,11 +52,11 @@
     <div class="grid g4">
       <div class="card"><div class="stat">144<small>testes automáticos passando (antes eram 77)</small></div></div>
       <div class="card"><div class="stat">92%<small>do código de <code>src/</code> coberto pelos testes</small></div></div>
-      <div class="card"><div class="stat">3 de 3<small>bloqueios 🔴 resolvidos</small></div></div>
+      <div class="card"><div class="stat">4 de 4<small>bloqueios resolvidos, inclusive o CSV real</small></div></div>
       <div class="card"><div class="stat">9<small>commits semânticos novos</small></div></div>
     </div>
     <p style="margin-top:16px">Em palavras simples: agora o projeto <b>barra dados ruins antes do modelo</b>, <b>pontua os dados de produção</b>, <b>registra o que cada etapa do pipeline fez</b>, <b>mostra tudo em painéis</b> e <b>dispara alertas</b> quando um lote é barrado, uma etapa falha ou os dados mudam demais (drift).</p>
-    <div class="note"><b>Importante:</b> tudo foi validado com <b>dados sintéticos</b> (inventados, só para teste), porque o CSV real do Kaggle não está no seu computador. Antes de entregar, rode com o CSV real e confira os limiares de alerta.</div>
+    <div class="note"><b>Dado real:</b> depois dos testes com dados sintéticos, rodei o pipeline inteiro com o <b>CSV real do Kaggle</b> (307.511 clientes) nos containers. O contrato aceitou o arquivo, o modelo treinou e os alertas se comportaram como esperado. Os resultados estão na seção 5.</div>
   </section>
 
   <section>
@@ -69,7 +69,9 @@
         <tr><td><b>Predições em lote</b> (Etapa 2)</td><td>Pendente</td><td><code>make predict</code> pontua o período estável e o driftado com o mesmo modelo da API.</td></tr>
         <tr><td>MLflow fora do container</td><td>Não estava instalado no projeto</td><td>Novo serviço <code>drift</code> no Docker reaproveita a imagem do treino.</td></tr>
         <tr><td>Comparar com a referência do treino</td><td>O relatório só comparava período 1 × 2</td><td>Também compara <b>referência × período estável</b>, que não deve mostrar drift.</td></tr>
-        <tr><td>CSV do Kaggle ausente</td><td>Nada rodava de ponta a ponta</td><td><span class="tag part">PARCIAL</span> Validado com dados sintéticos; falta rodar com o CSV real.</td></tr>
+        <tr><td>CSV do Kaggle ausente</td><td>Nada rodava de ponta a ponta</td><td><span class="tag ok">RESOLVIDO</span> CSV real em <code>data/raw/</code> (fora do Git). Pipeline completo rodou com 307.511 linhas.</td></tr>
+        <tr><td>HTML do Evidently só com dados agregados?</td><td>Sem conferência</td><td><span class="tag ok">CONFERIDO</span> Só histogramas por coluna; sem ID nem alvo.</td></tr>
+        <tr><td>Gráficos do período 2 sem aviso de alvo sintético</td><td>Sem aviso</td><td><span class="tag ok">AVISO ADICIONADO</span> Nota no README na seção de drift.</td></tr>
       </tbody>
     </table>
   </section>
@@ -123,15 +125,34 @@
   </section>
 
   <section>
-    <h2>5 · Provas visuais</h2>
-    <p class="dim">Capturas da execução real da stack com dados sintéticos.</p>
+    <h2>5 · Execução com o CSV real</h2>
+    <div class="grid g4">
+      <div class="card"><div class="stat">307.511<small>clientes lidos; contrato aceitou sem falso positivo (0,2 s)</small></div></div>
+      <div class="card"><div class="stat">0,762<small>AUC do XGBoost (validação cruzada); regressão logística 0,748</small></div></div>
+      <div class="card"><div class="stat">0%<small>features com drift em referência × estável (<code>drift_max_psi</code> 0,0012)</small></div></div>
+      <div class="card"><div class="stat">6,14%<small>features com drift em estável × driftado (7 de 114): alerta crítico</small></div></div>
+    </div>
+    <table style="margin-top:14px">
+      <thead><tr><th>Verificação</th><th>Resultado</th></tr></thead>
+      <tbody>
+        <tr><td>Etapas do pipeline (container)</td><td>Ingestão 6 s, contrato 0,2 s, transformação 20 s, treino 2 min 39 s, predição 1,8 s, drift 36 s e 14 s. Todas com sucesso.</td></tr>
+        <tr><td>Predições em lote</td><td>Estável: 30.752 linhas, AUC 0,763, 31% previstos como default. Driftado: 30.751 linhas, 47% previstos como default (score médio de 0,40 para 0,49).</td></tr>
+        <tr><td>Lote real corrompido de propósito</td><td>Barrado. Contagens batem com o que injetei: 200 menores de idade, 150 rendas nulas, 50 créditos negativos, 11 linhas de ID repetido, 10 alvos inválidos.</td></tr>
+        <tr><td>Reprodutibilidade</td><td>O resumo de drift regenerado ficou igual ao versionado (só difere nos últimos dígitos decimais).</td></tr>
+        <tr><td>Alertas ativos no fim</td><td>3: <code>DataDriftSevere</code> (estável × driftado), mais <code>PipelineStageFailed</code> e <code>DataContractViolation</code> do lote inválido da demonstração.</td></tr>
+        <tr><td><code>run_id</code></td><td>Corrigido: no container de drift cada etapa tinha um <code>run_id</code> diferente; agora todas compartilham o mesmo.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>6 · Provas visuais</h2>
+    <p class="dim">Capturas da execução da stack com o dado real.</p>
     <figure><img src="img/grafana-pipeline-health.png" alt="Painel do Grafana com status das etapas, drift por feature e alertas" /><figcaption>Painel de saúde do pipeline: etapas, duração, volume, drift por feature (PSI), violações do contrato, alertas e score do modelo.</figcaption></figure>
     <figure><img src="img/prometheus-alertas.png" alt="Página de alertas do Prometheus com três alertas disparando" /><figcaption>Alertas no Prometheus: 3 disparando (drift severo, etapa com falha e lote barrado) e 5 inativos.</figcaption></figure>
     <figure><img src="img/mlflow-runs.png" alt="MLflow com uma execução por etapa do pipeline" /><figcaption>MLflow: uma execução registrada por etapa do pipeline.</figcaption></figure>
   </section>
 
   <section>
-    <h2>6 · O que isso cobre do enunciado</h2>
+    <h2>7 · O que isso cobre do enunciado</h2>
     <table>
       <thead><tr><th>Item do enunciado</th><th>Situação</th><th>Onde está</th></tr></thead>
       <tbody>
@@ -165,13 +186,10 @@
   </section>
 
   <section>
-    <h2>7 · O que ainda falta ou merece atenção</h2>
+    <h2>8 · O que ainda falta ou merece atenção</h2>
     <ul>
-      <li><b>Rodar com o CSV real do Kaggle.</b> Tudo foi validado com dados sintéticos.</li>
-      <li><b>Conferir os limiares de alerta.</b> Hoje: aviso a 2% e crítico a 5% das features com PSI alto. Com o resumo real versionado, o cenário driftado dá 6,1%, perto do limite. Confirme que referência × estável fica abaixo de 2%.</li>
+      <li><b>Margem do alerta crítico é pequena.</b> O limiar é 5% (6 features); o cenário driftado tem 7. A linha de base ficou em 0%, então o aviso de 2% está seguro. Se mudar a intensidade da simulação, reavalie.</li>
       <li><b>Etapa 4:</b> LGPD, base legal, retenção e análise causal. O arquivo de eventos também precisa entrar no plano de retenção.</li>
-      <li><b>Rotular os gráficos do período 2</b> (<code>reports/*.png</code>) como "alvo sintético".</li>
-      <li><b>Conferir o HTML do Evidently versionado</b> para garantir que só tem agregados.</li>
       <li>Loki (logs em painel) não foi feito; ficou como opcional.</li>
       <li>Os alertas aparecem no Prometheus e no Grafana, mas não são enviados por e-mail ou Slack.</li>
       <li>Os 7 commits antigos fora do padrão continuam no histórico.</li>
@@ -181,7 +199,7 @@
   </section>
 
   <section>
-    <h2>8 · Como rodar</h2>
+    <h2>9 · Como rodar</h2>
 <pre>make install                         # dependências
 docker compose up -d --build         # API, Prometheus, Grafana, MLflow, Pushgateway
 make compose-pipeline                # treino + drift + predição + relatórios nos containers
@@ -195,7 +213,7 @@ make metrics-reset                   # limpa as métricas guardadas no Pushgatew
   </section>
 
   <section>
-    <h2>9 · Commits criados</h2>
+    <h2>10 · Commits criados</h2>
     <table>
       <thead><tr><th>Commit</th><th>O que entrega</th></tr></thead>
       <tbody>
@@ -210,7 +228,7 @@ make metrics-reset                   # limpa as métricas guardadas no Pushgatew
         <tr><td><code>docs</code></td><td>README, checklist, arquitetura e guia dos agentes atualizados</td></tr>
       </tbody>
     </table>
-    <p class="dim">Uma décima mudança, <code>docs(demo)</code>, adiciona este relatório e as capturas de tela.</p>
+    <p class="dim">Mais dois commits: <code>docs(demo)</code> (este relatório e as capturas) e <code>fix</code>/<code>docs</code> com os ajustes feitos depois da execução real (<code>run_id</code> único no container de drift e resultados com o dado real).</p>
   </section>
 
   <footer>Arquivos: <code>docs/demo/relatorio-etapa3.html</code> · <code>docs/adr/0001-observabilidade-pipeline-e-modelo.md</code> · <code>docs/metricas_saude.md</code></footer>

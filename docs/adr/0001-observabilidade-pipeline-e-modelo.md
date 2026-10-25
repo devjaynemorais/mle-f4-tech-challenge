@@ -338,7 +338,10 @@ Todas as fases F0 a F6 foram entregues. Diferenças em relação ao plano:
 alertas, dashboards e compose, e pipeline de ponta a ponta com dados
 sintéticos); `promtool check rules/config`; stack Docker real (API, Prometheus,
 Grafana, MLflow, Pushgateway) com `make compose-pipeline` e o cenário de lote
-inválido. Com dados sintéticos, a comparação referência × estável ficou sem
-drift (`drift_share` 0) e a estável × driftada disparou `DataDriftSevere`
-(`drift_share` 0,40). **Não foi executado com o CSV real do Kaggle**, então os
-limiares continuam sendo pontos de partida.
+inválido, primeiro com dados sintéticos e depois com o **CSV real do Kaggle**
+(307.511 linhas). No dado real: o contrato aceitou o arquivo sem falso positivo;
+treino com AUC de validação cruzada 0,762 (XGBoost) e 0,748 (regressão
+logística); AUC 0,763 no período estável; `reference_vs_stable` com
+`drift_share` 0% e `drift_max_psi` 0,0012 (sem alerta); `stable_vs_drifted` com
+6,14% (7 de 114 features) e alerta `DataDriftSevere`. Os limiares de 2% e 5%
+foram mantidos: a linha de base ficou ordens de grandeza abaixo do aviso.

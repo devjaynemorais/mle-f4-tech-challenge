@@ -146,16 +146,16 @@ Reabrir qualquer item só se a execução real com o CSV contradisser a premissa
 | 🔴 Contrato Pandera vazio | Resolvido | `src/data/contracts.py`: 5 colunas, 6 regras de negócio nomeadas mais nulos, tipos e colunas; barra o lote na ingestão e na predição |
 | 🔴 Lote inválido bloqueado | Resolvido | `make contract-demo` e teste de ponta a ponta (treino não roda se o contrato falha) |
 | 🔴 Predições em lote | Resolvido | `src/drift/predict_batch.py` + `make predict`; AUC só no período estável |
-| 🟠 CSV do Kaggle ausente | **Aberto** | Validado com dados sintéticos (testes e stack Docker); falta rodar com o CSV real |
+| 🟠 CSV do Kaggle ausente | Resolvido | CSV real em `data/raw/` (fora do Git); pipeline completo rodou nos containers com 307.511 linhas |
 | 🟠 `mlflow` fora do Poetry | Resolvido | Serviço `drift` no compose reaproveita a imagem `train` |
 | 🟡 Referência × estável | Resolvido | `make report` gera os dois relatórios; baseline sem drift nos testes |
-| 🟡 Limiar crítico | Resolvido | 2% e 5%; recalibrar com o CSV real |
+| 🟡 Limiar crítico | Resolvido | 2% e 5% confirmados com o dado real: baseline 0%, driftado 6,14% |
 | 🟡 Pushgateway e contadores | Resolvido | Só gauges do último estado |
 | 🟡 Compose, `.gitignore`, portas | Resolvido | Pushgateway em `127.0.0.1`, `alerts.yml` montado, `logs/` e `*.jsonl` ignorados |
 | 🟡 Teste de coerência | Resolvido | `tests/test_monitoring_assets.py` |
 | 🟡 Cenários para o vídeo | Resolvido | `make demo-observability` (o vídeo em si não faz parte desta entrega) |
 | 🟡 Docs desatualizados | Resolvido | README, checklist, `AGENTS.md`, `architecture.md`, `metricas_saude.md` |
 | 🟡 Commits fora do padrão | Mantido | Decisão: não reescrever; novos commits seguem o padrão |
-| 🟡 Gráficos do período 2 sem aviso de alvo sintético | **Aberto** | Rotular em `reports/` e no README antes da entrega final |
-| 🟡 HTML do Evidently só com agregados | **Aberto** | Conferir com o CSV real |
+| 🟡 Gráficos do período 2 sem aviso de alvo sintético | Resolvido | Aviso no README, junto da seção de drift (os PNGs vêm do notebook e não foram alterados) |
+| 🟡 HTML do Evidently só com agregados | Resolvido | Conferido: só bordas e densidades de histograma por coluna; sem `SK_ID_CURR` nem `TARGET` |
 | Etapa 4 (LGPD) e vídeo STAR | **Aberto** | Fora do escopo desta entrega |

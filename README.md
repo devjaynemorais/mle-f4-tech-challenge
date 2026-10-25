@@ -171,6 +171,11 @@ do período 2 é sintético. Os artefatos ficam em `reports/`:
 - `data_drift_summary.csv`: resultados por feature, com KS e PSI para colunas
   numéricas e qui-quadrado para categóricas, estatística, limiar e decisão.
 
+> **Aviso sobre os gráficos `reports/xgboost_*_prod1_vs_prod2.png`.** Eles vêm
+> do notebook de avaliação e comparam desempenho no período 2 usando o alvo
+> **sintético**. Descrevem a regra de simulação, não desempenho real em
+> produção.
+
 `make report` também gera a comparação de sanidade **referência de treino ×
 período 1 estável** (`reports/data_drift_reference_vs_stable.*`), que não deve
 indicar drift e serve de linha de base para calibrar os alertas.
@@ -216,6 +221,11 @@ docker compose up -d --build     # API, Prometheus, Grafana, MLflow, Pushgateway
 make compose-pipeline            # treino + drift + predição + relatórios nos containers
 make demo-observability          # cenários: estável (sem alerta), driftado, lote inválido
 ```
+
+Execução de referência com o dado real (307.511 linhas): contrato aceitou o
+arquivo; AUC de validação cruzada 0,762 (XGBoost); referência × estável sem
+drift (`drift_share` 0%); estável × driftado com 7 de 114 features em PSI ≥ 0,25
+(6,14%), o que dispara o alerta crítico `DataDriftSevere`.
 
 Sem Docker, rode `PUSHGATEWAY_URL=http://localhost:9091 make pipeline`
 (executa tudo sob um único `run_id`). Sem `PUSHGATEWAY_URL` ou

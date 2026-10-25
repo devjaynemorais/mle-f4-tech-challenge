@@ -123,12 +123,14 @@ Os limiares de drift ficam em `config/config.yaml` (`observability.drift_*`) e
 um teste garante que a regra e o config permanecem iguais. A mesma lógica gera
 o evento `alert_raised` no log.
 
-**Calibração.** Com o resumo de drift versionado, PSI ≥ 0,25 ocorre em 7 de 114
-features numéricas (6,1%), logo o cenário driftado dispara o alerta crítico.
-Os limiares são pontos de partida e devem ser conferidos com a execução real
-de `reference_vs_stable`, que precisa ficar abaixo do aviso. Alertar por KS foi
-descartado: com dezenas de milhares de linhas o teste marca diferenças
-irrelevantes.
+**Calibração com o dado real** (Home Credit, 307.511 linhas; execução de
+2026-10-25): `reference_vs_stable` deu `drift_share` 0% e `drift_max_psi`
+0,0012, muito abaixo do aviso de 2% (zero falsos positivos). `stable_vs_drifted`
+deu 7 de 114 features com PSI ≥ 0,25 (6,14%) e `drift_max_psi` 9,28, acima do
+crítico de 5%. A margem do crítico é de uma feature (6 já bastam; há 7), e
+`AGE_YEARS` e `DAYS_BIRTH` contam a mesma informação duas vezes. Se a simulação
+mudar de intensidade, reavalie. Alertar por KS foi descartado: com dezenas de
+milhares de linhas o teste marca diferenças irrelevantes (17 de 114 features).
 
 ## Limitações
 
