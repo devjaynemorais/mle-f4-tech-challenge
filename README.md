@@ -11,9 +11,9 @@ de dados, simulação e detecção de drift, monitoramento e documentação de
 governança/LGPD.
 
 > **Status:** contrato de dados, treino base, simulação e detecção de drift,
-> predições em lote e observabilidade de pipeline e modelo (métricas, logs,
-> alertas e dashboards) implementados. A governança (LGPD) e o vídeo STAR
-> (Etapa 4) continuam pendentes.
+> predições em lote, observabilidade de pipeline e modelo (métricas, logs,
+> alertas e dashboards) e documentação de governança (LGPD) implementados.
+> Resta apenas gravar e linkar o vídeo STAR (Etapa 4).
 
 ## Dataset
 
@@ -89,7 +89,7 @@ O contrato exato de entrada será definido pelo schema de dados da Etapa 1.
 | 1. Validação de dados e contratos | Validação de Dados | Contrato Pandera e treino base prontos | `src/data/`, `src/models/` |
 | 2. Simulação e detecção de drift | Data Drift | Simulação, relatórios e predições por lote prontos | `src/drift/`, `reports/` |
 | 3. Observabilidade de pipelines e modelos | Monitoramento de Pipelines e Infraestrutura | Métricas, logs, alertas e dashboards prontos | `src/observability/`, `monitoring/`, `src/serving/metrics.py` |
-| 4. Governança (LGPD) e causalidade | Privacy by Design e by Default | Seção abaixo a preencher | este README |
+| 4. Governança (LGPD) e causalidade | Privacy by Design e by Default | PII, base legal, retenção, viés e causalidade documentados; falta só o vídeo STAR | [`docs/governanca-lgpd.md`](docs/governanca-lgpd.md) |
 
 O checklist completo do enunciado está em
 [docs/checklist_requisitos_tc4.md](docs/checklist_requisitos_tc4.md) e a
@@ -233,46 +233,9 @@ Sem Docker, rode `PUSHGATEWAY_URL=http://localhost:9091 make pipeline`
 
 ## Governança e LGPD (Etapa 4)
 
-> Seção a preencher. Cada subseção abaixo lista as perguntas que o enunciado
-> exige; o texto definitivo será escrito junto com a implementação.
-
-### Tratamento de dados sensíveis (PII)
-
-- Quais campos do Home Credit são PII direta ou indireta (identificador,
-  datas de nascimento e emprego, valores de renda e crédito, contatos e
-  documentos quando presentes)?
-- Como são tratados: minimização, pseudonimização do `SK_ID_CURR`, e
-  exclusão de identificadores dos logs e das respostas da API?
-- Como a API evita registrar features de clientes? (Já há teste garantindo
-  que o valor de entrada não aparece nos logs de erro.)
-
-### Base legal para a decisão de crédito
-
-- Qual a base legal da LGPD para o tratamento (execução de contrato ou
-  legítimo interesse, com as ressalvas da lei)?
-- Qual o direito do titular à revisão de decisões automatizadas (art. 20 da
-  LGPD) e como o projeto permite isso?
-
-### Plano de retenção
-
-- Por quanto tempo o dataset bruto, os dados de produção simulados, as
-  predições e os logs são mantidos, e quando são eliminados?
-
-### Viés e mitigação
-
-- Quais variáveis podem atuar como proxy de características protegidas?
-- Como o drift e as métricas de desempenho são segmentados para detectar
-  disparidade entre grupos?
-
-### Causalidade
-
-- Análise causal do problema: por que a degradação ocorre, quais variáveis
-  são causas e quais são apenas correlações, e qual intervenção o time pode
-  fazer (retreinar, recalibrar limiar, revisar política)?
-
-## Vídeo STAR
-
-_Link a adicionar após a gravação (5 minutos, método STAR)._
+A documentação de governança, privacidade (LGPD), retenção, viés e análise
+causal está em **[`docs/governanca-lgpd.md`](docs/governanca-lgpd.md)**, junto
+com o roteiro e o link do vídeo STAR.
 
 ## Qualidade e CI
 
