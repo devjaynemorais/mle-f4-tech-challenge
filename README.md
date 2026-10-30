@@ -233,9 +233,21 @@ Sem Docker, rode `PUSHGATEWAY_URL=http://localhost:9091 make pipeline`
 
 ## Governança e LGPD (Etapa 4)
 
-A documentação de governança, privacidade (LGPD), retenção, viés e análise
-causal está em **[`docs/governanca-lgpd.md`](docs/governanca-lgpd.md)**, junto
-com o roteiro e o link do vídeo STAR.
+A documentação completa de governança está em
+**[`docs/governanca-lgpd.md`](docs/governanca-lgpd.md)** (com o roteiro e o link
+do vídeo STAR em [`docs/video-star-roteiro.md`](docs/video-star-roteiro.md)).
+Ela cobre:
+
+- **Tratamento de dados sensíveis (PII)** — mapeamento dos campos, minimização,
+  pseudonimização e não-exposição em logs e respostas.
+- **Base legal** para a decisão de crédito — LGPD art. 7º (V e IX) e direito à
+  revisão de decisão automatizada (art. 20).
+- **Plano de retenção** — por artefato, com minimização: nenhum dado com PII é
+  versionado no Git.
+- **Viés e mitigação** — variáveis proxy e segmentação de drift/métricas por
+  grupo.
+- **Causalidade** — data drift vs concept drift, causa vs correlação e as
+  intervenções (retreinar, recalibrar limiar, revisar política).
 
 ## Qualidade e CI
 
