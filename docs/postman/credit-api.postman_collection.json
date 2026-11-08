@@ -1,0 +1,150 @@
+{
+  "info": {
+    "name": "Credit Scoring API - Tech Challenge Fase 4",
+    "description": "Coleção para testar a API FastAPI de credit scoring. Suba a API com `make api` (após `make train`) ou `make compose-up`. O modelo é apoio à análise e exige revisão humana.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8000" }
+  ],
+  "item": [
+    {
+      "name": "Raiz (metadados)",
+      "request": { "method": "GET", "url": "{{base_url}}/" },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('200', () => pm.response.to.have.status(200));",
+              "pm.test('tem service e version', () => {",
+              "  const j = pm.response.json();",
+              "  pm.expect(j).to.have.property('service');",
+              "  pm.expect(j).to.have.property('version');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Health",
+      "request": { "method": "GET", "url": "{{base_url}}/health" },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('200', () => pm.response.to.have.status(200));",
+              "pm.test('modelo carregado', () => {",
+              "  const j = pm.response.json();",
+              "  pm.expect(j.status).to.eql('ok');",
+              "  pm.expect(j.model_loaded).to.eql(true);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Predict - exemplo",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{base_url}}/predict",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"features\": {\n    \"NAME_CONTRACT_TYPE\": \"Cash loans\",\n    \"CODE_GENDER\": \"F\",\n    \"AMT_INCOME_TOTAL\": 150000,\n    \"AMT_CREDIT\": 500000,\n    \"DAYS_BIRTH\": -12000,\n    \"EXT_SOURCE_2\": 0.5\n  }\n}",
+          "options": { "raw": { "language": "json" } }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('200', () => pm.response.to.have.status(200));",
+              "pm.test('contrato da resposta', () => {",
+              "  const j = pm.response.json();",
+              "  pm.expect(j.default_probability).to.be.within(0, 1);",
+              "  pm.expect(['default', 'non_default']).to.include(j.prediction);",
+              "  pm.expect(j).to.have.property('backend');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Predict - features vazias (422)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{base_url}}/predict",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"features\": {}\n}",
+          "options": { "raw": { "language": "json" } }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": ["pm.test('422', () => pm.response.to.have.status(422));"]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Predict - corpo inválido (422)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{base_url}}/predict",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"AMT_CREDIT\": 500000\n}",
+          "options": { "raw": { "language": "json" } }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": ["pm.test('422', () => pm.response.to.have.status(422));"]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Metrics (Prometheus)",
+      "request": { "method": "GET", "url": "{{base_url}}/metrics" },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('200', () => pm.response.to.have.status(200));",
+              "pm.test('métricas esperadas', () => {",
+              "  const t = pm.response.text();",
+              "  pm.expect(t).to.include('http_requests_total');",
+              "  pm.expect(t).to.include('http_request_duration_seconds');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Docs (Swagger)",
+      "request": { "method": "GET", "url": "{{base_url}}/docs" }
+    }
+  ]
+}
