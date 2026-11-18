@@ -10,10 +10,11 @@ camada de sustentação e confiabilidade ao redor de um modelo base: contratos
 de dados, simulação e detecção de drift, monitoramento e documentação de
 governança/LGPD.
 
-> **Status:** contrato de dados, treino base, simulação e detecção de drift,
-> predições em lote, observabilidade de pipeline e modelo (métricas, logs,
-> alertas e dashboards) e documentação de governança (LGPD) implementados.
-> Resta apenas gravar e linkar o vídeo STAR (Etapa 4).
+## Vídeo STAR da apresentação
+
+A apresentação do projeto no formato STAR está disponível no YouTube:
+
+[Assista o vídeo no YouTube](https://www.youtube.com/watch?v=NImZ27tFI1w)
 
 ## Dataset
 
